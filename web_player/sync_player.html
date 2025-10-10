@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synchronized Audio Player</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+        :root {
+            --primary-color: #06402B; /* Darker green */
+            --primary-highlight: #4caf50; /* Brighter green for active state */
+            --background-color: #121f1b; /* Very dark green-grey */
+            --panel-color: #1e332c; /* Dark green-grey */
+            --text-color: #ecf0f1;
+            --progress-fill-color: #4caf50;
+            --progress-bg-color: #3b5046;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            flex-direction: column;
+            margin: 0;
+        }
+
+        .player-container {
+            width: 100%;
+            max-width: 800px;
+            background-color: var(--panel-color);
+            border-radius: 25px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        .player-container h1 {
+            margin-top: 0;
+            font-size: 2em;
+            color: var(--primary-highlight);
+        }
+
+        .text-container {
+            font-size: 1.5em;
+            line-height: 1.8;
+            height: 250px;
+            overflow-y: auto;
+            border-radius: 10px;
+            background-color: #1a2924;
+            padding: 20px;
+            text-align: justify;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .text-container::-webkit-scrollbar { width: 8px; }
+        .text-container::-webkit-scrollbar-thumb { background: var(--primary-color); border-radius: 4px; }
+        .text-container::-webkit-scrollbar-track { background: var(--panel-color); }
+
+        .highlight {
+            background-color: var(--primary-highlight);
+            color: var(--background-color);
+            padding: 2px 4px;
+            border-radius: 5px;
+            transition: all 0.2s;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .control-panel {
+            background-color: #264335;
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            padding: 10px 25px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .control-panel button {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 1.5em;
+            cursor: pointer;
+            padding: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .control-panel button:hover {
+            color: var(--primary-highlight);
+            transform: scale(1.1);
+        }
+
+        .control-panel button.active {
+            color: var(--primary-highlight);
+            box-shadow: 0 0 15px var(--primary-highlight);
+            border-radius: 50%;
+        }
+
+        #play-pause-btn { font-size: 2em; }
+        #volume-slider-container { width: 100px; }
+
+        .repeat-controls {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9em;
+        }
+        .repeat-controls select {
+            background-color: var(--panel-color);
+            color: var(--text-color);
+            border: 1px solid #5d748d;
+            border-radius: 5px;
+            padding: 5px;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 10px;
+            background-color: var(--progress-bg-color);
+            border-radius: 5px;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: var(--progress-fill-color);
+            border-radius: 5px;
+            transition: width 0.1s linear;
+        }
+
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            font-size: 0.9em;
+            gap: 5px;
+        }
+        .speed-control select {
+            background-color: var(--panel-color);
+            color: var(--text-color);
+            border: 1px solid #5d748d;
+            border-radius: 5px;
+            padding: 5px;
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="player-container">
+        <h1 id="file-title"></h1>
+        <div id="text-container" class="text-container">Loading...</div>
+        <div class="progress-bar-container" id="progress-bar-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div class="time-display">
+            <span id="elapsed-time">0:00</span>
+            <span id="remaining-time">0:00</span>
+        </div>
+        <div class="controls">
+            <div class="control-panel">
+                <button id="prev-shloka-btn" title="Previous Shloka"><i class="fas fa-step-backward"></i></button>
+                <button id="play-pause-btn" title="Play/Pause"><i class="fas fa-play"></i></button>
+                <button id="next-shloka-btn" title="Next Shloka"><i class="fas fa-step-forward"></i></button>
+            </div>
+            <div class="volume-control">
+                <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1" title="Volume">
+            </div>
+        </div>
+        <div class="controls mt-10">
+            <div class="repeat-controls">
+                <label for="repeat-mode">Repeat:</label>
+                <select id="repeat-mode">
+                    <option value="none">None</option>
+                    <option value="shloka">Shloka</option>
+                    <option value="all">All (1x)</option>
+                    <option value="all-3x">All (3x)</option>
+                </select>
+            </div>
+            <div class="speed-control">
+                <label for="speed-selector">Speed:</label>
+                <select id="speed-selector">
+                    <option value="0.75">0.75x</option>
+                    <option value="1" selected>1x</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    <audio id="audio-player" class="hidden"></audio>
+
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+
+    <script>
+        const repoUrl = 'https://naveen1241.github.io/narayaneeyam_audio_sync/Audio_Sync_New/';
+        
+        const audio = document.getElementById('audio-player');
+        const textContainer = document.getElementById('text-container');
+        const fileTitle = document.getElementById('file-title');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const prevShlokaBtn = document.getElementById('prev-shloka-btn');
+        const nextShlokaBtn = document.getElementById('next-shloka-btn');
+        const progressBar = document.getElementById('progress-bar');
+        const progressBarContainer = document.getElementById('progress-bar-container');
+        const elapsedTimeDisplay = document.getElementById('elapsed-time');
+        const remainingTimeDisplay = document.getElementById('remaining-time');
+        const volumeSlider = document.getElementById('volume-slider');
+        const speedSelector = document.getElementById('speed-selector');
+        const repeatModeSelector = document.getElementById('repeat-mode');
+
+        let timingData = [];
+        let shlokaMapping = [];
+        let currentShlokaIndex = 0;
+        let isPlaying = false;
+        let repeatCounter = 0;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const fileBaseName = urlParams.get('file');
+        
+        if (!fileBaseName) {
+            textContainer.textContent = "Error: No file specified.";
+            fileTitle.textContent = "Error";
+        } else {
+            fileTitle.textContent = fileBaseName.replace(/_/g, ' ');
+            loadContent();
+        }
+
+        function loadContent() {
+            const audioPath = `${repoUrl}${fileBaseName}.wav`;
+            const jsonPath = `${repoUrl}${fileBaseName}.json`;
+            audio.src = audioPath;
+
+            fetch(jsonPath)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    timingData = data;
+                    mapShlokas();
+                    renderText();
+                })
+                .catch(error => {
+                    console.error('Error loading JSON data:', error);
+                    textContainer.textContent = `Error loading timing data for ${fileBaseName}.`;
+                });
+        }
+
+        function mapShlokas() {
+            shlokaMapping = [];
+            let shlokaStartWordIndex = 0;
+            timingData.forEach((item, index) => {
+                if (item.word.endsWith('॥')) {
+                    shlokaMapping.push({
+                        startWordIndex: shlokaStartWordIndex,
+                        endWordIndex: index,
+                        startWordTime: timingData[shlokaStartWordIndex].start,
+                        endWordTime: timingData[index].end
+                    });
+                    shlokaStartWordIndex = index + 1;
+                }
+            });
+        }
+
+        function renderText() {
+            textContainer.innerHTML = '';
+            timingData.forEach((item, index) => {
+                const span = document.createElement('span');
+                span.textContent = item.word + ' ';
+                span.id = `word-${index}`;
+                textContainer.appendChild(span);
+            });
+        }
+
+        function updatePlayPauseButton() {
+            if (isPlaying) {
+                playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                playPauseBtn.classList.add('active');
+            } else {
+                playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+                playPauseBtn.classList.remove('active');
+            }
+        }
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return '0:00';
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function updateProgressBar() {
+            const duration = audio.duration;
+            const currentTime = audio.currentTime;
+            if (duration > 0) {
+                const progressPercentage = (currentTime / duration) * 100;
+                progressBar.style.width = `${progressPercentage}%`;
+                elapsedTimeDisplay.textContent = formatTime(currentTime);
+                remainingTimeDisplay.textContent = formatTime(duration - currentTime);
+            }
+        }
+
+        function highlightText() {
+            const currentTime = audio.currentTime;
+            let currentWordIndex = -1;
+            timingData.forEach((item, index) => {
+                const wordSpan = document.getElementById(`word-${index}`);
+                if (wordSpan) {
+                    if (currentTime >= item.start && currentTime < item.end) {
+                        wordSpan.classList.add('highlight');
+                        currentWordIndex = index;
+                    } else {
+                        wordSpan.classList.remove('highlight');
+                    }
+                }
+            });
+
+            // Update currentShlokaIndex based on currentWordIndex
+            if (currentWordIndex !== -1) {
+                const newShlokaIndex = shlokaMapping.findIndex(shloka =>
+                    currentWordIndex >= shloka.startWordIndex && currentWordIndex <= shloka.endWordIndex
+                );
+                if (newShlokaIndex !== -1) {
+                    currentShlokaIndex = newShlokaIndex;
+                }
+            }
+        }
+
+        function handleRepeat() {
+            const repeatMode = repeatModeSelector.value;
+            if (repeatMode === 'shloka') {
+                audio.currentTime = shlokaMapping[currentShlokaIndex].startWordTime;
+                audio.play();
+            } else if (repeatMode === 'all' || repeatMode === 'all-3x') {
+                if (currentShlokaIndex < shlokaMapping.length - 1) {
+                    currentShlokaIndex++;
+                    audio.currentTime = shlokaMapping[currentShlokaIndex].startWordTime;
+                    audio.play();
+                } else {
+                    if (repeatMode === 'all-3x' && repeatCounter < 2) {
+                        currentShlokaIndex = 0;
+                        repeatCounter++;
+                        audio.currentTime = shlokaMapping[currentShlokaIndex].startWordTime;
+                        audio.play();
+                    } else {
+                        currentShlokaIndex = 0;
+                        repeatCounter = 0;
+                        audio.currentTime = 0;
+                        isPlaying = false;
+                        updatePlayPauseButton();
+                    }
+                }
+            }
+        }
+
+        // Event Listeners
+        playPauseBtn.addEventListener('click', () => {
+            if (audio.paused) {
+                audio.play();
+                isPlaying = true;
+            } else {
+                audio.pause();
+                isPlaying = false;
+            }
+            updatePlayPauseButton();
+        });
+        
+        nextShlokaBtn.addEventListener('click', () => {
+            currentShlokaIndex++;
+            if (currentShlokaIndex >= shlokaMapping.length) {
+                currentShlokaIndex = 0;
+            }
+            audio.currentTime = shlokaMapping[currentShlokaIndex].startWordTime;
+            if (!isPlaying) {
+                audio.play();
+                isPlaying = true;
+                updatePlayPauseButton();
+            }
+        });
+
+        prevShlokaBtn.addEventListener('click', () => {
+            currentShlokaIndex--;
+            if (currentShlokaIndex < 0) {
+                currentShlokaIndex = shlokaMapping.length - 1;
+            }
+            audio.currentTime = shlokaMapping[currentShlokaIndex].startWordTime;
+            if (!isPlaying) {
+                audio.play();
+                isPlaying = true;
+                updatePlayPauseButton();
+            }
+        });
+
+        volumeSlider.addEventListener('input', (e) => {
+            audio.volume = e.target.value;
+        });
+
+        speedSelector.addEventListener('change', (e) => {
+            audio.playbackRate = e.target.value;
+        });
+
+        progressBarContainer.addEventListener('click', (e) => {
+            const clickPosition = e.offsetX / progressBarContainer.offsetWidth;
+            audio.currentTime = clickPosition * audio.duration;
+        });
+        
+        audio.addEventListener('timeupdate', () => {
+            updateProgressBar();
+            highlightText();
+        });
+
+        audio.addEventListener('ended', () => {
+            isPlaying = false;
+            updatePlayPauseButton();
+            handleRepeat();
+        });
+
+        audio.addEventListener('loadedmetadata', () => {
+            updateProgressBar();
+            remainingTimeDisplay.textContent = formatTime(audio.duration);
+        });
+
+        textContainer.addEventListener('click', (e) => {
+            let target = e.target;
+            if (target.tagName === 'SPAN' && target.id.startsWith('word-')) {
+                const wordIndex = parseInt(target.id.split('-')[1]);
+                if (wordIndex >= 0 && wordIndex < timingData.length) {
+                    audio.currentTime = timingData[wordIndex].start;
+                    audio.play();
+                    isPlaying = true;
+                    updatePlayPauseButton();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

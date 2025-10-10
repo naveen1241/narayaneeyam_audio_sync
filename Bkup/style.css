@@ -1,0 +1,139 @@
+body {
+    background-color: #1a2e1a; /* Dark green background */
+    color: #f0f0f0; /* Light text for contrast */
+    font-family: 'Arial', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    text-align: center;
+}
+
+.player-container {
+    background: rgba(30, 60, 30, 0.8); /* Semi-transparent darker green */
+    border-radius: 50px; /* Highly rounded for oval frame */
+    padding: 40px 60px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); /* Soft shadow for depth */
+    border: 2px solid #2e4a2e; /* Subtle border */
+    max-width: 800px;
+    width: 90%;
+}
+
+h2#title {
+    font-size: 1.8rem;
+    margin-bottom: 20px;
+}
+
+#sync-text {
+    font-size: 2.5rem;
+    line-height: 1.6;
+    padding: 20px;
+    min-height: 200px;
+    text-align: center;
+}
+
+.sanskrit-word {
+    font-weight: bold;
+    display: inline;
+}
+
+.sanskrit-word.highlight {
+    color: #ff9900; /* Orange glow color */
+    text-shadow: 0 0 8px #ff9900;
+    transition: all 0.3s ease;
+}
+
+.meaning {
+    font-size: 1.2rem;
+    color: #cccccc;
+    margin-top: 10px;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.controls button, .secondary-controls button {
+    background: #3c6e3c; /* Darker green button background */
+    color: #f0f0f0;
+    border: none;
+    cursor: pointer;
+    border-radius: 30px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.controls button:hover, .secondary-controls button:hover,
+.controls button.active, .secondary-controls button.active {
+    background: #ff9900; /* Orange background on hover/active */
+    color: #1a2e1a;
+    box-shadow: 0 0 15px #ff9900; /* Orange glow */
+}
+
+.big-play {
+    font-size: 3rem;
+    padding: 20px 40px;
+}
+
+.nav-btn {
+    font-size: 1.5rem;
+    padding: 15px 25px;
+}
+
+.secondary-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.repeat-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.control-btn {
+    padding: 10px 15px;
+    font-size: 1rem;
+}
+
+.volume-control, .speed-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+input[type="range"] {
+    -webkit-appearance: none;
+    width: 100px;
+    height: 8px;
+    background: #558855;
+    border-radius: 5px;
+    outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #ff9900;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 5px #ff9900;
+}
+
+#speed-display {
+    width: 30px;
+    text-align: center;
+}

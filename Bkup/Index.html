@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Narayaneeyam Audio Sync Player</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://kit.fontawesome.com/your-fontawesome-kit.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="player-container">
+        <h2 id="title">Narayaneeyam - Dashakam 1</h2>
+        <div id="sync-text"></div>
+        <div class="controls">
+            <button id="prev-btn" class="nav-btn"><i class="fas fa-step-backward"></i></button>
+            <button id="play-pause-btn" class="big-play"><i class="fas fa-play"></i></button>
+            <button id="next-btn" class="nav-btn"><i class="fas fa-step-forward"></i></button>
+        </div>
+        <div class="secondary-controls">
+            <div class="repeat-container">
+                <button id="repeat-btn" class="control-btn"><i class="fas fa-redo"></i></button>
+                <div id="repeat-count">x1</div>
+            </div>
+            <div class="volume-control">
+                <label for="volume-slider"><i class="fas fa-volume-up"></i></label>
+                <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1">
+            </div>
+            <div class="speed-control">
+                <label for="speed-slider"><i class="fas fa-tachometer-alt"></i></label>
+                <input type="range" id="speed-slider" min="0.5" max="2" step="0.1" value="1">
+                <span id="speed-display">1x</span>
+            </div>
+        </div>
+    </div>
+    <audio id="audio-player" preload="metadata"></audio>
+
+    <script src="sync_data.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
