@@ -102,6 +102,7 @@
     let currentRecitationData = null;
     let currentTrackIndex = 0;
     let currentVerseIndex = -1;
+    let verseUpdateTimeout = null;
 
     // Function to update the text display
     function updateTextDisplay(text, isHighlight = false, isError = false) {
@@ -114,8 +115,9 @@
     // Loads the audio track at the current index
     function loadAudioTrack(index) {
         if (index < 0 || index >= recitations.length) {
-            console.log("Playlist finished.");
+            console.log("Playlist finished. Resetting to start.");
             updateTextDisplay("Playlist finished.", false);
+            currentTrackIndex = 0; // Reset playlist
             return;
         }
 
@@ -127,6 +129,8 @@
         
         updateTextDisplay(`Loading: ${filename}`);
         currentVerseIndex = -1;
+        
+        audioPlayer.load(); // Load the audio file to ensure metadata is available
     }
 
     // Function to handle audio playback and synchronization
@@ -136,10 +140,12 @@
         }
 
         const currentTime = audioPlayer.currentTime;
-        let verseFound = false;
         
+        // Find the correct verse using binary search
         let low = 0;
         let high = currentRecitationData.verses.length - 1;
+        let verseFound = false;
+        
         while (low <= high) {
             const mid = Math.floor((low + high) / 2);
             const verse = currentRecitationData.verses[mid];
@@ -151,6 +157,14 @@
                 if (currentVerseIndex !== mid) {
                     currentVerseIndex = mid;
                     updateTextDisplay(verse.text, true);
+
+                    // Optional: Set a timeout to clear the highlight.
+                    // This is an alternative to relying solely on the timeupdate event.
+                    if (verseUpdateTimeout) clearTimeout(verseUpdateTimeout);
+                    const timeUntilNextVerse = (nextVerseTime - currentTime) * 1000;
+                    verseUpdateTimeout = setTimeout(() => {
+                        updateTextDisplay(verse.text, false);
+                    }, timeUntilNextVerse);
                 }
                 verseFound = true;
                 break;
@@ -159,11 +173,6 @@
             } else {
                 low = mid + 1;
             }
-        }
-
-        if (!verseFound && currentVerseIndex !== -1) {
-            updateTextDisplay(currentRecitationData.verses[currentRecitationData.verses.length - 1].text, false);
-            currentVerseIndex = -1;
         }
     }
 
@@ -193,6 +202,11 @@
     // Event listener for "Play All" button
     playAllButton.addEventListener('click', () => {
         if (recitations && recitations.length > 0) {
+            // Check if the current audio has ended and restart if so
+            if (audioPlayer.ended) {
+                currentTrackIndex = 0;
+                loadAudioTrack(currentTrackIndex);
+            }
             audioPlayer.play();
         }
     });
@@ -209,5 +223,6 @@
     audioPlayer.addEventListener('timeupdate', handleAudioSync);
     document.addEventListener('DOMContentLoaded', loadData);
 </script>
+
 </body>
 </html>
