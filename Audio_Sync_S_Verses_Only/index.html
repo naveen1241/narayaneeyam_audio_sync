@@ -12,12 +12,12 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
         }
         .player-container {
             width: 100%;
             max-width: 600px;
             margin: auto;
-            font-family: 'Helvetica Neue', Arial, sans-serif;
             border: 1px solid #ddd;
             border-radius: 12px;
             overflow: hidden;
@@ -84,25 +84,29 @@
     <div class="controls-row">
         <button id="play-all-button">Play All</button>
     </div>
-    <audio id="audio-player" class="audio-controls" controls aria-label="Audio player"></audio>
+    <audio id="audio-player" class="audio-controls" controls aria-label="Audio player">
+        <!-- The track element points to the VTT file dynamically -->
+        <track id="audio-track" kind="captions" srclang="en" label="Captions" default>
+    </audio>
     <div id="text-display" class="text-display loading">Fetching content...</div>
 </div>
 
 <script>
     const audioPlayer = document.getElementById('audio-player');
+    const audioTrack = document.getElementById('audio-track');
     const textDisplay = document.getElementById('text-display');
     const playAllButton = document.getElementById('play-all-button');
 
-    // --- Configuration: Files are in the same folder ---
+    // --- Configuration ---
+    // Make sure these paths are correct relative to your index.html
     const config = {
-        jsonUrl: './recitations_master_aligned.json'
+        jsonUrl: './recitations_master_weighted_timed.json',
+        audioFolder: './audio/',
+        vttFolder: './vtt/'
     };
 
     let recitations = [];
-    let currentRecitationData = null;
     let currentTrackIndex = 0;
-    let currentVerseIndex = -1;
-    let verseUpdateTimeout = null;
 
     // Function to update the text display
     function updateTextDisplay(text, isHighlight = false, isError = false) {
@@ -112,74 +116,30 @@
         textDisplay.classList.toggle('error', isError);
     }
 
-    // Loads the audio track at the current index
-    function loadAudioTrack(index) {
+    // Loads the audio and track for a given index
+    function loadAudioAndTrack(index) {
         if (index < 0 || index >= recitations.length) {
             console.log("Playlist finished. Resetting to start.");
-            updateTextDisplay("Playlist finished.", false);
+            updateTextDisplay("Playlist finished.");
             currentTrackIndex = 0; // Reset playlist
             return;
         }
 
         currentTrackIndex = index;
-        currentRecitationData = recitations[currentTrackIndex];
+        const currentRecitationData = recitations[currentTrackIndex];
         
-        const filename = currentRecitationData.audio;
-        audioPlayer.src = `./${filename}`;
+        const audioFilename = currentRecitationData.audio;
+        const vttFilename = audioFilename.replace('.mp3', '.vtt');
         
-        updateTextDisplay(`Loading: ${filename}`);
-        currentVerseIndex = -1;
+        // Dynamically set the audio source
+        audioPlayer.src = `${config.audioFolder}${audioFilename}`;
+        // Dynamically set the VTT track source
+        audioTrack.src = `${config.vttFolder}${vttFilename}`;
         
-        audioPlayer.load(); // Load the audio file to ensure metadata is available
+        // Load the audio and associated track
+        audioPlayer.load(); 
+        updateTextDisplay(`Loading: ${audioFilename}`);
     }
-
-    // Function to handle audio playback and synchronization
-   // --- Replacement for your existing handleAudioSync function ---
-function handleAudioSync() {
-    if (!currentRecitationData || audioPlayer.paused || audioPlayer.ended) {
-        return;
-    }
-
-    const currentTime = audioPlayer.currentTime;
-    const verses = currentRecitationData.verses;
-    
-    // Use a simple loop to find the correct verse
-    let newVerseIndex = -1;
-    for (let i = 0; i < verses.length; i++) {
-        const verseTime = verses[i].time;
-        const nextVerseTime = (i + 1 < verses.length) ? verses[i + 1].time : Infinity;
-
-        if (currentTime >= verseTime && currentTime < nextVerseTime) {
-            newVerseIndex = i;
-            break;
-        }
-    }
-
-    // Update the text only if the verse has changed
-    if (newVerseIndex !== -1 && newVerseIndex !== currentVerseIndex) {
-        currentVerseIndex = newVerseIndex;
-        updateTextDisplay(verses[currentVerseIndex].text, true);
-
-        // Clear previous highlight timeout if it exists
-        if (verseUpdateTimeout) clearTimeout(verseUpdateTimeout);
-
-        // Optional: Set a new timeout to unhighlight the verse
-        const nextVerseTime = (currentVerseIndex + 1 < verses.length) ? verses[currentVerseIndex + 1].time : audioPlayer.duration;
-        const timeUntilNextVerse = (nextVerseTime - currentTime) * 1000;
-        
-        verseUpdateTimeout = setTimeout(() => {
-            // Check if we are still on the same verse before unhighlighting
-            if (currentVerseIndex === newVerseIndex) {
-                updateTextDisplay(verses[currentVerseIndex].text, false);
-            }
-        }, timeUntilNextVerse);
-    } else if (newVerseIndex === -1 && currentVerseIndex !== -1) {
-        // Handle case where audio ends or is before the first verse
-        currentVerseIndex = -1;
-        updateTextDisplay(""); // Clear text
-    }
-}
-
 
     // Load JSON data and set up the playlist
     async function loadData() {
@@ -192,7 +152,7 @@ function handleAudioSync() {
             recitations = await response.json();
 
             if (recitations && recitations.length > 0) {
-                loadAudioTrack(0);
+                loadAudioAndTrack(0);
                 playAllButton.style.display = 'block';
                 updateTextDisplay("Press 'Play All' to begin.");
             } else {
@@ -204,13 +164,24 @@ function handleAudioSync() {
         }
     }
 
+    // Listen for the cuechange event on the track
+    // This is the key change from the JSON approach
+    audioTrack.addEventListener('cuechange', () => {
+        const activeCues = audioTrack.track.activeCues;
+        if (activeCues && activeCues.length > 0) {
+            // Get the text of the first active cue
+            updateTextDisplay(activeCues[0].text, true);
+        } else {
+            updateTextDisplay("");
+        }
+    });
+
     // Event listener for "Play All" button
     playAllButton.addEventListener('click', () => {
         if (recitations && recitations.length > 0) {
-            // Check if the current audio has ended and restart if so
             if (audioPlayer.ended) {
-                currentTrackIndex = 0;
-                loadAudioTrack(currentTrackIndex);
+                // If ended, load the first track again
+                loadAudioAndTrack(0);
             }
             audioPlayer.play();
         }
@@ -218,14 +189,17 @@ function handleAudioSync() {
 
     // Event listener for audio finishing
     audioPlayer.addEventListener('ended', () => {
-        loadAudioTrack(currentTrackIndex + 1);
-        if (currentTrackIndex < recitations.length) {
+        const nextTrackIndex = currentTrackIndex + 1;
+        if (nextTrackIndex < recitations.length) {
+            loadAudioAndTrack(nextTrackIndex);
             audioPlayer.play();
+        } else {
+            // If at the end of the playlist, reset
+            updateTextDisplay("Playlist finished.");
         }
     });
-
-    // Attach the sync handler and load data on page load
-    audioPlayer.addEventListener('timeupdate', handleAudioSync);
+    
+    // Initial data load on page load
     document.addEventListener('DOMContentLoaded', loadData);
 </script>
 
