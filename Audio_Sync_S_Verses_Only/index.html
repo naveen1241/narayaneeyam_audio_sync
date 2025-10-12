@@ -97,7 +97,6 @@
     const playAllButton = document.getElementById('play-all-button');
 
     // --- Configuration: Paths are relative to the index.html file ---
-    // The index.html is in Audio_Sync_S_Verses_Only/
     const config = {
         jsonUrl: './recitations_master_weighted_timed.json',
         audioFolder: './', // MP3 files are in the same folder as index.html
@@ -160,7 +159,8 @@
     audioTrack.addEventListener('cuechange', () => {
         const activeCues = audioTrack.track.activeCues;
         if (activeCues && activeCues.length > 0) {
-            updateTextDisplay(activeCues.text, true);
+            // Access the text from the correct property of the first cue
+            updateTextDisplay(activeCues[0].text, true); 
         } else {
             updateTextDisplay("");
         }
