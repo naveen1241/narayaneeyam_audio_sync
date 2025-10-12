@@ -134,47 +134,52 @@
     }
 
     // Function to handle audio playback and synchronization
-    function handleAudioSync() {
-        if (!currentRecitationData || audioPlayer.paused || audioPlayer.ended) {
-            return;
-        }
+   // --- Replacement for your existing handleAudioSync function ---
+function handleAudioSync() {
+    if (!currentRecitationData || audioPlayer.paused || audioPlayer.ended) {
+        return;
+    }
 
-        const currentTime = audioPlayer.currentTime;
-        
-        // Find the correct verse using binary search
-        let low = 0;
-        let high = currentRecitationData.verses.length - 1;
-        let verseFound = false;
-        
-        while (low <= high) {
-            const mid = Math.floor((low + high) / 2);
-            const verse = currentRecitationData.verses[mid];
-            const nextVerse = currentRecitationData.verses[mid + 1];
-            const verseTime = verse.time;
-            const nextVerseTime = nextVerse ? nextVerse.time : Infinity;
+    const currentTime = audioPlayer.currentTime;
+    const verses = currentRecitationData.verses;
+    
+    // Use a simple loop to find the correct verse
+    let newVerseIndex = -1;
+    for (let i = 0; i < verses.length; i++) {
+        const verseTime = verses[i].time;
+        const nextVerseTime = (i + 1 < verses.length) ? verses[i + 1].time : Infinity;
 
-            if (currentTime >= verseTime && currentTime < nextVerseTime) {
-                if (currentVerseIndex !== mid) {
-                    currentVerseIndex = mid;
-                    updateTextDisplay(verse.text, true);
-
-                    // Optional: Set a timeout to clear the highlight.
-                    // This is an alternative to relying solely on the timeupdate event.
-                    if (verseUpdateTimeout) clearTimeout(verseUpdateTimeout);
-                    const timeUntilNextVerse = (nextVerseTime - currentTime) * 1000;
-                    verseUpdateTimeout = setTimeout(() => {
-                        updateTextDisplay(verse.text, false);
-                    }, timeUntilNextVerse);
-                }
-                verseFound = true;
-                break;
-            } else if (currentTime < verseTime) {
-                high = mid - 1;
-            } else {
-                low = mid + 1;
-            }
+        if (currentTime >= verseTime && currentTime < nextVerseTime) {
+            newVerseIndex = i;
+            break;
         }
     }
+
+    // Update the text only if the verse has changed
+    if (newVerseIndex !== -1 && newVerseIndex !== currentVerseIndex) {
+        currentVerseIndex = newVerseIndex;
+        updateTextDisplay(verses[currentVerseIndex].text, true);
+
+        // Clear previous highlight timeout if it exists
+        if (verseUpdateTimeout) clearTimeout(verseUpdateTimeout);
+
+        // Optional: Set a new timeout to unhighlight the verse
+        const nextVerseTime = (currentVerseIndex + 1 < verses.length) ? verses[currentVerseIndex + 1].time : audioPlayer.duration;
+        const timeUntilNextVerse = (nextVerseTime - currentTime) * 1000;
+        
+        verseUpdateTimeout = setTimeout(() => {
+            // Check if we are still on the same verse before unhighlighting
+            if (currentVerseIndex === newVerseIndex) {
+                updateTextDisplay(verses[currentVerseIndex].text, false);
+            }
+        }, timeUntilNextVerse);
+    } else if (newVerseIndex === -1 && currentVerseIndex !== -1) {
+        // Handle case where audio ends or is before the first verse
+        currentVerseIndex = -1;
+        updateTextDisplay(""); // Clear text
+    }
+}
+
 
     // Load JSON data and set up the playlist
     async function loadData() {
