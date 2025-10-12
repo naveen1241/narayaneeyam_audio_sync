@@ -130,9 +130,7 @@
         const audioFilename = currentRecitationData.audio;
         const vttFilename = audioFilename.replace('.mp3', '.vtt');
         
-        // Dynamically set the audio source
         audioPlayer.src = `${config.audioFolder}${audioFilename}`;
-        // Dynamically set the VTT track source
         audioTrack.src = `${config.vttFolder}${vttFilename}`;
         
         audioPlayer.load(); 
@@ -166,7 +164,7 @@
     audioTrack.addEventListener('cuechange', () => {
         const activeCues = audioTrack.track.activeCues;
         if (activeCues && activeCues.length > 0) {
-            updateTextDisplay(activeCues[0].text, true); // Use activeCues[0] to access the first cue's text
+            updateTextDisplay(activeCues[0].text, true); // Use activeCues[0].text to access the first cue's text
         } else {
             updateTextDisplay("");
         }
