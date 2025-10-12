@@ -96,12 +96,11 @@
     const textDisplay = document.getElementById('text-display');
     const playAllButton = document.getElementById('play-all-button');
 
-    // --- Configuration: Files are relative to the site root ---
-    // The base URL is https://naveen1241.github.io/narayaneeyam_audio_sync/
+    // --- Configuration: Paths are relative to the index.html file ---
     const config = {
-        jsonUrl: './Audio_Sync_S_Verses_Only/recitations_master_weighted_timed.json',
-        audioFolder: './Audio_Sync_S_Verses_Only/',
-        vttFolder: './Audio_Sync_S_Verses_Only/vtt_output/'
+        jsonUrl: './recitations_master_weighted_timed.json',
+        audioFolder: './', // Assuming MP3 files are in the same folder as index.html
+        vttFolder: './vtt_output/'
     };
 
     let recitations = [];
@@ -164,7 +163,7 @@
     audioTrack.addEventListener('cuechange', () => {
         const activeCues = audioTrack.track.activeCues;
         if (activeCues && activeCues.length > 0) {
-            updateTextDisplay(activeCues[0].text, true); // Use activeCues[0].text to access the first cue's text
+            updateTextDisplay(activeCues[0].text, true); // Use activeCues[0].text
         } else {
             updateTextDisplay("");
         }
