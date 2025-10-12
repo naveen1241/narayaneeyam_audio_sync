@@ -2,141 +2,212 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Audio Sync Player</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Audio-Text Sync Player</title>
     <style>
+        body {
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
         .player-container {
             width: 100%;
             max-width: 600px;
             margin: auto;
-            font-family: sans-serif;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
             border: 1px solid #ddd;
-            border-radius: 8px;
+            border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        .controls-row {
+            display: flex;
+            justify-content: center;
+            padding: 15px;
+            background: #f9f9f9;
+        }
+        #play-all-button {
+            padding: 10px 20px;
+            font-size: 1.1em;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #play-all-button:hover {
+            background-color: #0056b3;
         }
         .audio-controls {
             width: 100%;
             display: block;
-            background: #f9f9f9;
-            padding: 10px;
+            background: #fff;
+            border-top: 1px solid #eee;
+            padding: 15px;
             box-sizing: border-box;
         }
         .text-display {
-            min-height: 100px;
-            padding: 15px;
-            font-size: 1.2em;
+            min-height: 150px;
+            padding: 20px;
+            font-size: 1.3em;
             text-align: center;
-            line-height: 1.5;
+            line-height: 1.6;
             background: #fff;
-            color: #333;
-            transition: background-color 0.3s ease;
+            color: #555;
+            transition: background-color 0.4s ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .text-display.highlight {
-            background-color: #e0f7fa;
+            background-color: #e6f7ff;
+            color: #004085;
+            font-weight: bold;
+        }
+        .text-display.loading {
+            color: #999;
+            font-style: italic;
+        }
+        .text-display.error {
+            color: #dc3545;
             font-weight: bold;
         }
     </style>
 </head>
 <body>
 
-<div class="player-container">
-    <audio id="audio-player" class="audio-controls" controls></audio>
-    <div id="text-display" class="text-display">Loading...</div>
+<div class="player-container" aria-live="polite">
+    <div class="controls-row">
+        <button id="play-all-button">Play All</button>
+    </div>
+    <audio id="audio-player" class="audio-controls" controls aria-label="Audio player"></audio>
+    <div id="text-display" class="text-display loading">Fetching content...</div>
 </div>
 
 <script>
     const audioPlayer = document.getElementById('audio-player');
     const textDisplay = document.getElementById('text-display');
+    const playAllButton = document.getElementById('play-all-button');
 
-    // --- CORRECTED PATHS ---
-    const mp3Url = 'https://naveen1241.github.io/narayaneeyam_audio_sync/Audio_Sync_S_Verses_Only/Narayaneeyam_D001.mp3'; 
-    const jsonUrl = 'https://naveen1241.github.io/narayaneeyam_audio_sync/Audio_Sync_S_Verses_Only/recitations_master_aligned.json';
+    // --- Configuration: Files are in the same folder ---
+    const config = {
+        jsonUrl: './recitations_master_aligned.json'
+    };
 
-    let recitations = null;
+    let recitations = [];
+    let currentRecitationData = null;
+    let currentTrackIndex = 0;
     let currentVerseIndex = -1;
-    let verseEndTimeout = null;
-
-    // Helper to get filename from URL
-    function getFilenameFromUrl(url) {
-        return url.split('/').pop();
-    }
 
     // Function to update the text display
-    function updateTextDisplay(text, isHighlight = false) {
+    function updateTextDisplay(text, isHighlight = false, isError = false) {
         textDisplay.textContent = text;
-        if (isHighlight) {
-            textDisplay.classList.add('highlight');
-        } else {
-            textDisplay.classList.remove('highlight');
+        textDisplay.classList.toggle('highlight', isHighlight);
+        textDisplay.classList.toggle('loading', false);
+        textDisplay.classList.toggle('error', isError);
+    }
+
+    // Loads the audio track at the current index
+    function loadAudioTrack(index) {
+        if (index < 0 || index >= recitations.length) {
+            console.log("Playlist finished.");
+            updateTextDisplay("Playlist finished.", false);
+            return;
         }
+
+        currentTrackIndex = index;
+        currentRecitationData = recitations[currentTrackIndex];
+        
+        const filename = currentRecitationData.audio;
+        audioPlayer.src = `./${filename}`;
+        
+        updateTextDisplay(`Loading: ${filename}`);
+        currentVerseIndex = -1;
     }
 
     // Function to handle audio playback and synchronization
     function handleAudioSync() {
-        if (!recitations || recitations.length === 0) return;
-
-        const currentMp3Filename = getFilenameFromUrl(audioPlayer.src);
-        const currentRecitation = recitations.find(r => r.audio === currentMp3Filename);
-        
-        if (!currentRecitation) {
+        if (!currentRecitationData || audioPlayer.paused || audioPlayer.ended) {
             return;
         }
 
         const currentTime = audioPlayer.currentTime;
+        let verseFound = false;
         
-        let foundVerse = false;
-        for (let i = 0; i < currentRecitation.verses.length; i++) {
-            const verse = currentRecitation.verses[i];
-            const nextVerse = currentRecitation.verses[i + 1];
+        let low = 0;
+        let high = currentRecitationData.verses.length - 1;
+        while (low <= high) {
+            const mid = Math.floor((low + high) / 2);
+            const verse = currentRecitationData.verses[mid];
+            const nextVerse = currentRecitationData.verses[mid + 1];
+            const verseTime = verse.time;
+            const nextVerseTime = nextVerse ? nextVerse.time : Infinity;
 
-            if (currentTime >= verse.time && (nextVerse === undefined || currentTime < nextVerse.time)) {
-                if (currentVerseIndex !== i) {
-                    currentVerseIndex = i;
+            if (currentTime >= verseTime && currentTime < nextVerseTime) {
+                if (currentVerseIndex !== mid) {
+                    currentVerseIndex = mid;
                     updateTextDisplay(verse.text, true);
-
-                    if (verseEndTimeout) {
-                        clearTimeout(verseEndTimeout);
-                    }
-
-                    const endTime = nextVerse ? nextVerse.time : (audioPlayer.duration || verse.time + 5);
-                    const timeUntilEnd = (endTime - currentTime) * 1000;
-                    verseEndTimeout = setTimeout(() => {
-                        updateTextDisplay(verse.text, false);
-                    }, timeUntilEnd);
                 }
-                foundVerse = true;
+                verseFound = true;
                 break;
+            } else if (currentTime < verseTime) {
+                high = mid - 1;
+            } else {
+                low = mid + 1;
             }
         }
-        
-        if (!foundVerse && currentVerseIndex !== -1) {
-            updateTextDisplay("Playback finished.", false);
+
+        if (!verseFound && currentVerseIndex !== -1) {
+            updateTextDisplay(currentRecitationData.verses[currentRecitationData.verses.length - 1].text, false);
             currentVerseIndex = -1;
         }
     }
 
-    // Load JSON data and set up the audio player
-    fetch(jsonUrl)
-        .then(response => {
+    // Load JSON data and set up the playlist
+    async function loadData() {
+        try {
+            updateTextDisplay("Fetching track list...");
+            const response = await fetch(config.jsonUrl);
             if (!response.ok) {
-                throw new Error('Network response was not ok ' + response.statusText);
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-            return response.json();
-        })
-        .then(data => {
-            recitations = data;
+            recitations = await response.json();
+
             if (recitations && recitations.length > 0) {
-                audioPlayer.src = mp3Url;
-                audioPlayer.addEventListener('timeupdate', handleAudioSync);
-                updateTextDisplay("Ready to play.");
+                loadAudioTrack(0);
+                playAllButton.style.display = 'block';
+                updateTextDisplay("Press 'Play All' to begin.");
             } else {
-                updateTextDisplay("Error: No recitation data found.");
+                throw new Error("No recitation data found.");
             }
-        })
-        .catch(error => {
-            console.error('Error loading or parsing JSON:', error);
-            updateTextDisplay("Error loading text data.");
-        });
+        } catch (error) {
+            console.error('Error:', error);
+            updateTextDisplay(`Error loading data: ${error.message}`, false, true);
+        }
+    }
+
+    // Event listener for "Play All" button
+    playAllButton.addEventListener('click', () => {
+        if (recitations && recitations.length > 0) {
+            audioPlayer.play();
+        }
+    });
+
+    // Event listener for audio finishing
+    audioPlayer.addEventListener('ended', () => {
+        loadAudioTrack(currentTrackIndex + 1);
+        if (currentTrackIndex < recitations.length) {
+            audioPlayer.play();
+        }
+    });
+
+    // Attach the sync handler and load data on page load
+    audioPlayer.addEventListener('timeupdate', handleAudioSync);
+    document.addEventListener('DOMContentLoaded', loadData);
 </script>
 </body>
 </html>
