@@ -16,7 +16,7 @@
         }
         .player-container {
             width: 100%;
-            max-width: 600px;
+            max-width: 800px; /* Adjusted window size */
             margin: auto;
             border: 1px solid #ddd;
             border-radius: 12px;
@@ -30,8 +30,8 @@
             background: #f9f9f9;
         }
         #play-all-button {
-            padding: 10px 20px;
-            font-size: 1.1em;
+            padding: 12px 24px; /* Adjusted button size */
+            font-size: 1.2em; /* Adjusted button font size */
             background-color: #007bff;
             color: white;
             border: none;
@@ -53,7 +53,7 @@
         .text-display {
             min-height: 150px;
             padding: 20px;
-            font-size: 1.3em;
+            font-size: 1.5em; /* Adjusted text display font size */
             text-align: center;
             line-height: 1.6;
             background: #fff;
@@ -96,17 +96,15 @@
     const textDisplay = document.getElementById('text-display');
     const playAllButton = document.getElementById('play-all-button');
 
-    // --- Configuration: Paths are relative to the index.html file ---
     const config = {
-        jsonUrl: './recitations_master_weighted_timed.json',
-        audioFolder: './', // Assuming MP3 files are in the same folder as index.html
-        vttFolder: './vtt_output/'
+        jsonUrl: './Audio_Sync_S_Verses_Only/recitations_master_weighted_timed.json',
+        audioFolder: './Audio_Sync_S_Verses_Only/',
+        vttFolder: './Audio_Sync_S_Verses_Only/vtt_output/'
     };
 
     let recitations = [];
     let currentTrackIndex = 0;
 
-    // Function to update the text display
     function updateTextDisplay(text, isHighlight = false, isError = false) {
         textDisplay.textContent = text;
         textDisplay.classList.toggle('highlight', isHighlight);
@@ -114,12 +112,11 @@
         textDisplay.classList.toggle('error', isError);
     }
 
-    // Loads the audio and track for a given index
     function loadAudioAndTrack(index) {
         if (index < 0 || index >= recitations.length) {
             console.log("Playlist finished. Resetting to start.");
             updateTextDisplay("Playlist finished.");
-            currentTrackIndex = 0; // Reset playlist
+            currentTrackIndex = 0;
             return;
         }
 
@@ -136,7 +133,6 @@
         updateTextDisplay(`Loading: ${audioFilename}`);
     }
 
-    // Load JSON data and set up the playlist
     async function loadData() {
         try {
             updateTextDisplay("Fetching track list...");
@@ -159,17 +155,15 @@
         }
     }
 
-    // Listen for the cuechange event on the track
     audioTrack.addEventListener('cuechange', () => {
         const activeCues = audioTrack.track.activeCues;
         if (activeCues && activeCues.length > 0) {
-            updateTextDisplay(activeCues[0].text, true); // Use activeCues[0].text
+            updateTextDisplay(activeCues[0].text, true);
         } else {
             updateTextDisplay("");
         }
     });
 
-    // Event listener for "Play All" button
     playAllButton.addEventListener('click', () => {
         if (recitations && recitations.length > 0) {
             if (audioPlayer.ended) {
@@ -179,7 +173,6 @@
         }
     });
 
-    // Event listener for audio finishing
     audioPlayer.addEventListener('ended', () => {
         const nextTrackIndex = currentTrackIndex + 1;
         if (nextTrackIndex < recitations.length) {
@@ -190,7 +183,6 @@
         }
     });
     
-    // Initial data load on page load
     document.addEventListener('DOMContentLoaded', loadData);
 </script>
 
