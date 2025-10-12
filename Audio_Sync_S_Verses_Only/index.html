@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Audio Sync Player</title>
+    <style>
+        .player-container {
+            width: 100%;
+            max-width: 600px;
+            margin: auto;
+            font-family: sans-serif;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .audio-controls {
+            width: 100%;
+            display: block;
+            background: #f9f9f9;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .text-display {
+            min-height: 100px;
+            padding: 15px;
+            font-size: 1.2em;
+            text-align: center;
+            line-height: 1.5;
+            background: #fff;
+            color: #333;
+            transition: background-color 0.3s ease;
+        }
+        .text-display.highlight {
+            background-color: #e0f7fa;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="player-container">
+    <audio id="audio-player" class="audio-controls" controls></audio>
+    <div id="text-display" class="text-display">Loading...</div>
+</div>
+
+<script>
+    const audioPlayer = document.getElementById('audio-player');
+    const textDisplay = document.getElementById('text-display');
+
+    // --- CORRECTED PATHS ---
+    const mp3Url = 'https://naveen1241.github.io/narayaneeyam_audio_sync/Audio_Sync_S_Verses_Only/Narayaneeyam_D001.mp3'; 
+    const jsonUrl = 'https://naveen1241.github.io/narayaneeyam_audio_sync/Audio_Sync_S_Verses_Only/recitations_master_aligned.json';
+
+    let recitations = null;
+    let currentVerseIndex = -1;
+    let verseEndTimeout = null;
+
+    // Helper to get filename from URL
+    function getFilenameFromUrl(url) {
+        return url.split('/').pop();
+    }
+
+    // Function to update the text display
+    function updateTextDisplay(text, isHighlight = false) {
+        textDisplay.textContent = text;
+        if (isHighlight) {
+            textDisplay.classList.add('highlight');
+        } else {
+            textDisplay.classList.remove('highlight');
+        }
+    }
+
+    // Function to handle audio playback and synchronization
+    function handleAudioSync() {
+        if (!recitations || recitations.length === 0) return;
+
+        const currentMp3Filename = getFilenameFromUrl(audioPlayer.src);
+        const currentRecitation = recitations.find(r => r.audio === currentMp3Filename);
+        
+        if (!currentRecitation) {
+            return;
+        }
+
+        const currentTime = audioPlayer.currentTime;
+        
+        let foundVerse = false;
+        for (let i = 0; i < currentRecitation.verses.length; i++) {
+            const verse = currentRecitation.verses[i];
+            const nextVerse = currentRecitation.verses[i + 1];
+
+            if (currentTime >= verse.time && (nextVerse === undefined || currentTime < nextVerse.time)) {
+                if (currentVerseIndex !== i) {
+                    currentVerseIndex = i;
+                    updateTextDisplay(verse.text, true);
+
+                    if (verseEndTimeout) {
+                        clearTimeout(verseEndTimeout);
+                    }
+
+                    const endTime = nextVerse ? nextVerse.time : (audioPlayer.duration || verse.time + 5);
+                    const timeUntilEnd = (endTime - currentTime) * 1000;
+                    verseEndTimeout = setTimeout(() => {
+                        updateTextDisplay(verse.text, false);
+                    }, timeUntilEnd);
+                }
+                foundVerse = true;
+                break;
+            }
+        }
+        
+        if (!foundVerse && currentVerseIndex !== -1) {
+            updateTextDisplay("Playback finished.", false);
+            currentVerseIndex = -1;
+        }
+    }
+
+    // Load JSON data and set up the audio player
+    fetch(jsonUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok ' + response.statusText);
+            }
+            return response.json();
+        })
+        .then(data => {
+            recitations = data;
+            if (recitations && recitations.length > 0) {
+                audioPlayer.src = mp3Url;
+                audioPlayer.addEventListener('timeupdate', handleAudioSync);
+                updateTextDisplay("Ready to play.");
+            } else {
+                updateTextDisplay("Error: No recitation data found.");
+            }
+        })
+        .catch(error => {
+            console.error('Error loading or parsing JSON:', error);
+            updateTextDisplay("Error loading text data.");
+        });
+</script>
+</body>
+</html>
