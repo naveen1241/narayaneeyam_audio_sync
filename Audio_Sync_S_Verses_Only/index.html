@@ -85,7 +85,6 @@
         <button id="play-all-button">Play All</button>
     </div>
     <audio id="audio-player" class="audio-controls" controls aria-label="Audio player">
-        <!-- The track element points to the VTT file dynamically -->
         <track id="audio-track" kind="captions" srclang="en" label="Captions" default>
     </audio>
     <div id="text-display" class="text-display loading">Fetching content...</div>
@@ -97,12 +96,12 @@
     const textDisplay = document.getElementById('text-display');
     const playAllButton = document.getElementById('play-all-button');
 
-    // --- Configuration ---
-    // Make sure these paths are correct relative to your index.html
+    // --- Configuration: Files are relative to the site root ---
+    // The base URL is https://naveen1241.github.io/narayaneeyam_audio_sync/
     const config = {
-        jsonUrl: './recitations_master_weighted_timed.json',
-        audioFolder: './audio/',
-        vttFolder: './vtt/'
+        jsonUrl: './Audio_Sync_S_Verses_Only/recitations_master_weighted_timed.json',
+        audioFolder: './Audio_Sync_S_Verses_Only/',
+        vttFolder: './Audio_Sync_S_Verses_Only/vtt_output/'
     };
 
     let recitations = [];
@@ -136,7 +135,6 @@
         // Dynamically set the VTT track source
         audioTrack.src = `${config.vttFolder}${vttFilename}`;
         
-        // Load the audio and associated track
         audioPlayer.load(); 
         updateTextDisplay(`Loading: ${audioFilename}`);
     }
@@ -165,12 +163,10 @@
     }
 
     // Listen for the cuechange event on the track
-    // This is the key change from the JSON approach
     audioTrack.addEventListener('cuechange', () => {
         const activeCues = audioTrack.track.activeCues;
         if (activeCues && activeCues.length > 0) {
-            // Get the text of the first active cue
-            updateTextDisplay(activeCues[0].text, true);
+            updateTextDisplay(activeCues[0].text, true); // Use activeCues[0] to access the first cue's text
         } else {
             updateTextDisplay("");
         }
@@ -180,7 +176,6 @@
     playAllButton.addEventListener('click', () => {
         if (recitations && recitations.length > 0) {
             if (audioPlayer.ended) {
-                // If ended, load the first track again
                 loadAudioAndTrack(0);
             }
             audioPlayer.play();
@@ -194,7 +189,6 @@
             loadAudioAndTrack(nextTrackIndex);
             audioPlayer.play();
         } else {
-            // If at the end of the playlist, reset
             updateTextDisplay("Playlist finished.");
         }
     });
