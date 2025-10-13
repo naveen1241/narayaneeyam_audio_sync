@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dynamic Audio-Text Sync Player</title>
     <style>
+        /* CSS styles remain the same */
         body {
             background-color: #f4f4f4;
             display: flex;
@@ -16,7 +17,7 @@
         }
         .player-container {
             width: 100%;
-            max-width: 800px; /* Adjusted window size */
+            max-width: 800px;
             margin: auto;
             border: 1px solid #ddd;
             border-radius: 12px;
@@ -30,8 +31,8 @@
             background: #f9f9f9;
         }
         #play-all-button {
-            padding: 12px 24px; /* Adjusted button size */
-            font-size: 1.2em; /* Adjusted button font size */
+            padding: 12px 24px;
+            font-size: 1.2em;
             background-color: #007bff;
             color: white;
             border: none;
@@ -53,7 +54,7 @@
         .text-display {
             min-height: 150px;
             padding: 20px;
-            font-size: 1.5em; /* Adjusted text display font size */
+            font-size: 1.5em;
             text-align: center;
             line-height: 1.6;
             background: #fff;
@@ -91,22 +92,24 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
     const audioPlayer = document.getElementById('audio-player');
     const audioTrack = document.getElementById('audio-track');
     const textDisplay = document.getElementById('text-display');
     const playAllButton = document.getElementById('play-all-button');
 
+    // --- Configuration: Using absolute raw URLs to guarantee correct pathing ---
+    // Make sure to replace <your-username> and <your-repo> with your details
+    const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/naveen1241/narayaneeyam_audio_sync/refs/heads/main/Audio_Sync_S_Verses_Only/';
+    
     const config = {
-        jsonUrl: './recitations_master_weighted_timed.json',
-        audioFolder: './',
-        vttFolder: './vtt_output/'
+        jsonUrl: `${GITHUB_RAW_URL}recitations_master_weighted_timed.json`,
+        audioFolder: GITHUB_RAW_URL,
+        vttFolder: `${GITHUB_RAW_URL}vtt_output/`
     };
 
     let recitations = [];
     let currentTrackIndex = 0;
 
-    // Function to update the text display
     function updateTextDisplay(text, isHighlight = false, isError = false) {
         textDisplay.textContent = text;
         textDisplay.classList.toggle('highlight', isHighlight);
@@ -114,42 +117,6 @@
         textDisplay.classList.toggle('error', isError);
     }
 
-    // Displays the current, previous, and next cues
-    function updateSurroundingText() {
-        const track = audioTrack.track;
-        if (!track || !track.activeCues || track.activeCues.length === 0) {
-            updateTextDisplay("");
-            return;
-        }
-
-        const activeCue = track.activeCues[0];
-        const cues = track.cues;
-        let activeCueIndex = -1;
-        
-        // Find the index of the active cue
-        for (let i = 0; i < cues.length; i++) {
-            if (cues[i] === activeCue) {
-                activeCueIndex = i;
-                break;
-            }
-        }
-
-        if (activeCueIndex === -1) {
-            updateTextDisplay(activeCue.text, true); // Fallback to current text only
-            return;
-        }
-
-        // Build the text with previous, current, and next lines
-        const previousText = activeCueIndex > 0 ? cues[activeCueIndex - 1].text + "\n" : "";
-        const currentText = activeCue.text;
-        const nextText = activeCueIndex < cues.length - 1 ? "\n" + cues[activeCueIndex + 1].text : "";
-
-        // Combine and display the text
-        textDisplay.textContent = previousText + currentText + nextText;
-        textDisplay.classList.add('highlight');
-    }
-
-    // Loads the audio and track for a given index
     function loadAudioAndTrack(index) {
         if (index < 0 || index >= recitations.length) {
             console.log("Playlist finished. Resetting to start.");
@@ -171,7 +138,6 @@
         updateTextDisplay(`Loading: ${audioFilename}`);
     }
 
-    // Load JSON data and set up the playlist
     async function loadData() {
         try {
             updateTextDisplay("Fetching track list...");
@@ -194,10 +160,15 @@
         }
     }
 
-    // Listen for the cuechange event to trigger the updated display
-    audioTrack.addEventListener('cuechange', updateSurroundingText);
+    audioTrack.addEventListener('cuechange', () => {
+        const activeCues = audioTrack.track.activeCues;
+        if (activeCues && activeCues.length > 0) {
+            updateTextDisplay(activeCues.text, true);
+        } else {
+            updateTextDisplay("");
+        }
+    });
 
-    // Event listener for "Play All" button
     playAllButton.addEventListener('click', () => {
         if (recitations && recitations.length > 0) {
             if (audioPlayer.ended) {
@@ -207,7 +178,6 @@
         }
     });
 
-    // Event listener for audio finishing
     audioPlayer.addEventListener('ended', () => {
         const nextTrackIndex = currentTrackIndex + 1;
         if (nextTrackIndex < recitations.length) {
@@ -218,10 +188,7 @@
         }
     });
     
-    // Initial data load on page load
     document.addEventListener('DOMContentLoaded', loadData);
-});
-
 </script>
 
 </body>
