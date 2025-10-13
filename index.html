@@ -91,24 +91,22 @@
 </div>
 
 <script>
+    document.addEventListener('DOMContentLoaded', () => {
     const audioPlayer = document.getElementById('audio-player');
     const audioTrack = document.getElementById('audio-track');
     const textDisplay = document.getElementById('text-display');
     const playAllButton = document.getElementById('play-all-button');
 
-    // --- Configuration: Paths are relative to the index.html file ---
     const config = {
-const config = {
-    jsonUrl: './Audio_Sync_S_Verses_Only/recitations_master_weighted_timed.json',
-    audioFolder: './Audio_Sync_S_Verses_Only/',
-    vttFolder: './Audio_Sync_S_Verses_Only/vtt_output/'
-};
-
+        jsonUrl: './recitations_master_weighted_timed.json',
+        audioFolder: './',
+        vttFolder: './vtt_output/'
     };
 
     let recitations = [];
     let currentTrackIndex = 0;
 
+    // Function to update the text display
     function updateTextDisplay(text, isHighlight = false, isError = false) {
         textDisplay.textContent = text;
         textDisplay.classList.toggle('highlight', isHighlight);
@@ -116,6 +114,42 @@ const config = {
         textDisplay.classList.toggle('error', isError);
     }
 
+    // Displays the current, previous, and next cues
+    function updateSurroundingText() {
+        const track = audioTrack.track;
+        if (!track || !track.activeCues || track.activeCues.length === 0) {
+            updateTextDisplay("");
+            return;
+        }
+
+        const activeCue = track.activeCues[0];
+        const cues = track.cues;
+        let activeCueIndex = -1;
+        
+        // Find the index of the active cue
+        for (let i = 0; i < cues.length; i++) {
+            if (cues[i] === activeCue) {
+                activeCueIndex = i;
+                break;
+            }
+        }
+
+        if (activeCueIndex === -1) {
+            updateTextDisplay(activeCue.text, true); // Fallback to current text only
+            return;
+        }
+
+        // Build the text with previous, current, and next lines
+        const previousText = activeCueIndex > 0 ? cues[activeCueIndex - 1].text + "\n" : "";
+        const currentText = activeCue.text;
+        const nextText = activeCueIndex < cues.length - 1 ? "\n" + cues[activeCueIndex + 1].text : "";
+
+        // Combine and display the text
+        textDisplay.textContent = previousText + currentText + nextText;
+        textDisplay.classList.add('highlight');
+    }
+
+    // Loads the audio and track for a given index
     function loadAudioAndTrack(index) {
         if (index < 0 || index >= recitations.length) {
             console.log("Playlist finished. Resetting to start.");
@@ -137,6 +171,7 @@ const config = {
         updateTextDisplay(`Loading: ${audioFilename}`);
     }
 
+    // Load JSON data and set up the playlist
     async function loadData() {
         try {
             updateTextDisplay("Fetching track list...");
@@ -159,16 +194,10 @@ const config = {
         }
     }
 
-    audioTrack.addEventListener('cuechange', () => {
-        const activeCues = audioTrack.track.activeCues;
-        if (activeCues && activeCues.length > 0) {
-            // Access the text from the correct property of the first cue
-            updateTextDisplay(activeCues[0].text, true); 
-        } else {
-            updateTextDisplay("");
-        }
-    });
+    // Listen for the cuechange event to trigger the updated display
+    audioTrack.addEventListener('cuechange', updateSurroundingText);
 
+    // Event listener for "Play All" button
     playAllButton.addEventListener('click', () => {
         if (recitations && recitations.length > 0) {
             if (audioPlayer.ended) {
@@ -178,6 +207,7 @@ const config = {
         }
     });
 
+    // Event listener for audio finishing
     audioPlayer.addEventListener('ended', () => {
         const nextTrackIndex = currentTrackIndex + 1;
         if (nextTrackIndex < recitations.length) {
@@ -188,7 +218,10 @@ const config = {
         }
     });
     
+    // Initial data load on page load
     document.addEventListener('DOMContentLoaded', loadData);
+});
+
 </script>
 
 </body>
