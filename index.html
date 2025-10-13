@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Audio-Text Sync Player</title>
+    <style>
+        body {
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+        .player-container {
+            width: 100%;
+            max-width: 800px; /* Adjusted window size */
+            margin: auto;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        .controls-row {
+            display: flex;
+            justify-content: center;
+            padding: 15px;
+            background: #f9f9f9;
+        }
+        #play-all-button {
+            padding: 12px 24px; /* Adjusted button size */
+            font-size: 1.2em; /* Adjusted button font size */
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #play-all-button:hover {
+            background-color: #0056b3;
+        }
+        .audio-controls {
+            width: 100%;
+            display: block;
+            background: #fff;
+            border-top: 1px solid #eee;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+        .text-display {
+            min-height: 150px;
+            padding: 20px;
+            font-size: 1.5em; /* Adjusted text display font size */
+            text-align: center;
+            line-height: 1.6;
+            background: #fff;
+            color: #555;
+            transition: background-color 0.4s ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .text-display.highlight {
+            background-color: #e6f7ff;
+            color: #004085;
+            font-weight: bold;
+        }
+        .text-display.loading {
+            color: #999;
+            font-style: italic;
+        }
+        .text-display.error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="player-container" aria-live="polite">
+    <div class="controls-row">
+        <button id="play-all-button">Play All</button>
+    </div>
+    <audio id="audio-player" class="audio-controls" controls aria-label="Audio player">
+        <track id="audio-track" kind="captions" srclang="en" label="Captions" default>
+    </audio>
+    <div id="text-display" class="text-display loading">Fetching content...</div>
+</div>
+
+<script>
+    const audioPlayer = document.getElementById('audio-player');
+    const audioTrack = document.getElementById('audio-track');
+    const textDisplay = document.getElementById('text-display');
+    const playAllButton = document.getElementById('play-all-button');
+
+    // --- Configuration: Paths are relative to the index.html file ---
+    const config = {
+        jsonUrl: './recitations_master_weighted_timed.json',
+        audioFolder: './', // MP3 files are in the same folder as index.html
+        vttFolder: './vtt_output/' // vtt_output is a subfolder
+    };
+
+    let recitations = [];
+    let currentTrackIndex = 0;
+
+    function updateTextDisplay(text, isHighlight = false, isError = false) {
+        textDisplay.textContent = text;
+        textDisplay.classList.toggle('highlight', isHighlight);
+        textDisplay.classList.toggle('loading', false);
+        textDisplay.classList.toggle('error', isError);
+    }
+
+    function loadAudioAndTrack(index) {
+        if (index < 0 || index >= recitations.length) {
+            console.log("Playlist finished. Resetting to start.");
+            updateTextDisplay("Playlist finished.");
+            currentTrackIndex = 0;
+            return;
+        }
+
+        currentTrackIndex = index;
+        const currentRecitationData = recitations[currentTrackIndex];
+        
+        const audioFilename = currentRecitationData.audio;
+        const vttFilename = audioFilename.replace('.mp3', '.vtt');
+        
+        audioPlayer.src = `${config.audioFolder}${audioFilename}`;
+        audioTrack.src = `${config.vttFolder}${vttFilename}`;
+        
+        audioPlayer.load(); 
+        updateTextDisplay(`Loading: ${audioFilename}`);
+    }
+
+    async function loadData() {
+        try {
+            updateTextDisplay("Fetching track list...");
+            const response = await fetch(config.jsonUrl);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            recitations = await response.json();
+
+            if (recitations && recitations.length > 0) {
+                loadAudioAndTrack(0);
+                playAllButton.style.display = 'block';
+                updateTextDisplay("Press 'Play All' to begin.");
+            } else {
+                throw new Error("No recitation data found.");
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            updateTextDisplay(`Error loading data: ${error.message}`, false, true);
+        }
+    }
+
+    audioTrack.addEventListener('cuechange', () => {
+        const activeCues = audioTrack.track.activeCues;
+        if (activeCues && activeCues.length > 0) {
+            // Access the text from the correct property of the first cue
+            updateTextDisplay(activeCues[0].text, true); 
+        } else {
+            updateTextDisplay("");
+        }
+    });
+
+    playAllButton.addEventListener('click', () => {
+        if (recitations && recitations.length > 0) {
+            if (audioPlayer.ended) {
+                loadAudioAndTrack(0);
+            }
+            audioPlayer.play();
+        }
+    });
+
+    audioPlayer.addEventListener('ended', () => {
+        const nextTrackIndex = currentTrackIndex + 1;
+        if (nextTrackIndex < recitations.length) {
+            loadAudioAndTrack(nextTrackIndex);
+            audioPlayer.play();
+        } else {
+            updateTextDisplay("Playlist finished.");
+        }
+    });
+    
+    document.addEventListener('DOMContentLoaded', loadData);
+</script>
+
+</body>
+</html>
