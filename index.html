@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dynamic Audio-Text Sync Player</title>
     <style>
-        /* CSS styles remain the same */
         body {
             background-color: #f4f4f4;
             display: flex;
@@ -17,7 +16,7 @@
         }
         .player-container {
             width: 100%;
-            max-width: 800px;
+            max-width: 800px; /* Adjusted window size */
             margin: auto;
             border: 1px solid #ddd;
             border-radius: 12px;
@@ -31,8 +30,8 @@
             background: #f9f9f9;
         }
         #play-all-button {
-            padding: 12px 24px;
-            font-size: 1.2em;
+            padding: 12px 24px; /* Adjusted button size */
+            font-size: 1.2em; /* Adjusted button font size */
             background-color: #007bff;
             color: white;
             border: none;
@@ -54,7 +53,7 @@
         .text-display {
             min-height: 150px;
             padding: 20px;
-            font-size: 1.5em;
+            font-size: 1.5em; /* Adjusted text display font size */
             text-align: center;
             line-height: 1.6;
             background: #fff;
@@ -63,6 +62,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            white-space: pre-wrap; /* Ensures line breaks are respected */
         }
         .text-display.highlight {
             background-color: #e6f7ff;
@@ -97,18 +97,15 @@
     const textDisplay = document.getElementById('text-display');
     const playAllButton = document.getElementById('play-all-button');
 
-    // --- Configuration: Using absolute raw URLs to guarantee correct pathing ---
-    // Make sure to replace <your-username> and <your-repo> with your details
-    const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/naveen1241/narayaneeyam_audio_sync/refs/heads/main/Audio_Sync_S_Verses_Only/';
-    
     const config = {
-        jsonUrl: `${GITHUB_RAW_URL}recitations_master_weighted_timed.json`,
-        audioFolder: GITHUB_RAW_URL,
-        vttFolder: `${GITHUB_RAW_URL}vtt_output/`
+        jsonUrl: './recitations_master_weighted_timed.json',
+        audioFolder: './',
+        vttFolder: './vtt_output/'
     };
 
     let recitations = [];
     let currentTrackIndex = 0;
+    let trackCues = null;
 
     function updateTextDisplay(text, isHighlight = false, isError = false) {
         textDisplay.textContent = text;
@@ -117,9 +114,46 @@
         textDisplay.classList.toggle('error', isError);
     }
 
+    function updateSurroundingText() {
+        if (!trackCues) {
+            updateTextDisplay("");
+            return;
+        }
+
+        const activeCues = audioTrack.track.activeCues;
+        if (!activeCues || activeCues.length === 0) {
+            updateTextDisplay("");
+            return;
+        }
+
+        const activeCue = activeCues[0];
+        let activeCueIndex = -1;
+        for (let i = 0; i < trackCues.length; i++) {
+            if (trackCues[i] === activeCue) {
+                activeCueIndex = i;
+                break;
+            }
+        }
+
+        if (activeCueIndex === -1) {
+            updateTextDisplay(activeCue.text, true);
+            return;
+        }
+
+        let combinedText = '';
+        if (activeCueIndex > 0) {
+            combinedText += trackCues[activeCueIndex - 1].text + "\n\n";
+        }
+        combinedText += activeCue.text;
+        if (activeCueIndex < trackCues.length - 1) {
+            combinedText += "\n\n" + trackCues[activeCueIndex + 1].text;
+        }
+
+        updateTextDisplay(combinedText, true);
+    }
+
     function loadAudioAndTrack(index) {
         if (index < 0 || index >= recitations.length) {
-            console.log("Playlist finished. Resetting to start.");
             updateTextDisplay("Playlist finished.");
             currentTrackIndex = 0;
             return;
@@ -127,14 +161,15 @@
 
         currentTrackIndex = index;
         const currentRecitationData = recitations[currentTrackIndex];
-        
         const audioFilename = currentRecitationData.audio;
         const vttFilename = audioFilename.replace('.mp3', '.vtt');
-        
+
         audioPlayer.src = `${config.audioFolder}${audioFilename}`;
         audioTrack.src = `${config.vttFolder}${vttFilename}`;
-        
-        audioPlayer.load(); 
+
+        trackCues = null;
+        audioTrack.track.mode = 'hidden';
+        audioPlayer.load();
         updateTextDisplay(`Loading: ${audioFilename}`);
     }
 
@@ -142,9 +177,7 @@
         try {
             updateTextDisplay("Fetching track list...");
             const response = await fetch(config.jsonUrl);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             recitations = await response.json();
 
             if (recitations && recitations.length > 0) {
@@ -159,21 +192,17 @@
             updateTextDisplay(`Error loading data: ${error.message}`, false, true);
         }
     }
-
-    audioTrack.addEventListener('cuechange', () => {
-        const activeCues = audioTrack.track.activeCues;
-        if (activeCues && activeCues.length > 0) {
-            updateTextDisplay(activeCues.text, true);
-        } else {
-            updateTextDisplay("");
-        }
+    
+    // Use the load event to get the cues and then listen for cue changes
+    audioTrack.addEventListener('load', () => {
+        trackCues = audioTrack.track.cues;
+        audioTrack.track.mode = 'showing';
+        audioTrack.addEventListener('cuechange', updateSurroundingText);
     });
 
     playAllButton.addEventListener('click', () => {
         if (recitations && recitations.length > 0) {
-            if (audioPlayer.ended) {
-                loadAudioAndTrack(0);
-            }
+            if (audioPlayer.ended) loadAudioAndTrack(0);
             audioPlayer.play();
         }
     });
