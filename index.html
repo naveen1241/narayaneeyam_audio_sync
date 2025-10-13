@@ -115,24 +115,41 @@ const config = {
     }
 
     function updateSurroundingText() {
+        if (!trackCues) {
+            updateTextDisplay("");
+            return;
+        }
+
         const activeCues = audioTrack.track.activeCues;
-        
         if (!activeCues || activeCues.length === 0) {
             updateTextDisplay("");
             return;
         }
 
-        updateTextDisplay(activeCues[0].text, true);
-    }
-    
-    // NEW FUNCTION: Forces the display of the first cue immediately if it exists
-    function checkInitialCue() {
-        if (audioTrack.track.cues.length > 0 && audioPlayer.currentTime === 0) {
-            updateTextDisplay(audioTrack.track.cues[0].text);
-        } else {
-            // Fallback for when we load but haven't played yet
-            updateTextDisplay("Press 'Play All' to begin.");
+        const activeCue = activeCues[0];
+        let activeCueIndex = -1;
+        for (let i = 0; i < trackCues.length; i++) {
+            if (trackCues[i] === activeCue) {
+                activeCueIndex = i;
+                break;
+            }
         }
+
+        if (activeCueIndex === -1) {
+            updateTextDisplay(activeCue.text, true);
+            return;
+        }
+
+        let combinedText = '';
+        if (activeCueIndex > 0) {
+            combinedText += trackCues[activeCueIndex - 1].text + "\n\n";
+        }
+        combinedText += activeCue.text;
+        if (activeCueIndex < trackCues.length - 1) {
+            combinedText += "\n\n" + trackCues[activeCueIndex + 1].text;
+        }
+
+        updateTextDisplay(combinedText, true);
     }
 
     function loadAudioAndTrack(index) {
@@ -166,7 +183,7 @@ const config = {
             if (recitations && recitations.length > 0) {
                 loadAudioAndTrack(0);
                 playAllButton.style.display = 'block';
-                // Handled by checkInitialCue now
+                updateTextDisplay("Press 'Play All' to begin.");
             } else {
                 throw new Error("No recitation data found.");
             }
@@ -181,17 +198,7 @@ const config = {
         trackCues = audioTrack.track.cues;
         audioTrack.track.mode = 'showing';
         audioTrack.addEventListener('cuechange', updateSurroundingText);
-        
-        // Call the new function to display the initial text immediately
-        checkInitialCue(); 
     });
-    
-    // If the VTT file fails to load entirely, handle the error
-    audioTrack.addEventListener('error', (event) => {
-        console.error("Error loading VTT track:", event);
-        updateTextDisplay("Error loading subtitles. Check file paths and server MIME types.", false, true);
-    });
-
 
     playAllButton.addEventListener('click', () => {
         if (recitations && recitations.length > 0) {
