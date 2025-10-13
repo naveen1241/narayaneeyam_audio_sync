@@ -114,42 +114,17 @@ const config = {
         textDisplay.classList.toggle('error', isError);
     }
 
+    // REVISED FUNCTION: Displays only the active cue, respecting VTT line breaks
     function updateSurroundingText() {
-        if (!trackCues) {
-            updateTextDisplay("");
-            return;
-        }
-
         const activeCues = audioTrack.track.activeCues;
+        
         if (!activeCues || activeCues.length === 0) {
             updateTextDisplay("");
             return;
         }
 
-        const activeCue = activeCues[0];
-        let activeCueIndex = -1;
-        for (let i = 0; i < trackCues.length; i++) {
-            if (trackCues[i] === activeCue) {
-                activeCueIndex = i;
-                break;
-            }
-        }
-
-        if (activeCueIndex === -1) {
-            updateTextDisplay(activeCue.text, true);
-            return;
-        }
-
-        let combinedText = '';
-        if (activeCueIndex > 0) {
-            combinedText += trackCues[activeCueIndex - 1].text + "\n\n";
-        }
-        combinedText += activeCue.text;
-        if (activeCueIndex < trackCues.length - 1) {
-            combinedText += "\n\n" + trackCues[activeCueIndex + 1].text;
-        }
-
-        updateTextDisplay(combinedText, true);
+        // Display only the first active cue's text as written in the VTT file
+        updateTextDisplay(activeCues[0].text, true);
     }
 
     function loadAudioAndTrack(index) {
