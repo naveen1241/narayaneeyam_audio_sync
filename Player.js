@@ -75,7 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (isPlaying) {
-            audioPlayer.play();
+            audioPlayer.addEventListener('canplay', function playOnLoad() {
+                audioPlayer.play();
+                audioPlayer.removeEventListener('canplay', playOnLoad);
+            });
         }
     }
 
@@ -85,14 +88,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     playPauseBtn.addEventListener('click', () => {
-        if (isPlaying) {
-            audioPlayer.pause();
-            playPauseBtn.textContent = 'Play';
-        } else {
+        if (audioPlayer.paused) {
             audioPlayer.play();
             playPauseBtn.textContent = 'Pause';
+            isPlaying = true;
+        } else {
+            audioPlayer.pause();
+            playPauseBtn.textContent = 'Play';
+            isPlaying = false;
         }
-        isPlaying = !isPlaying;
     });
 
     speedSelect.addEventListener('change', (e) => {
@@ -106,22 +110,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Main synchronization logic
     audioPlayer.addEventListener('timeupdate', () => {
         const currentTime = audioPlayer.currentTime;
-          // This line will prove the event is firing
-    console.log("Time updated! Current time: ", audioPlayer.currentTime);
         if (!currentChapterText || currentChapterText.length === 0) {
             return;
         }
         
         let foundCue = false;
-        // Iterate through the cues and highlight the matching one
         for (const p of currentChapterText) {
             const startTime = parseTime(p.dataset.start);
             const endTime = parseTime(p.dataset.end);
             
-            // Add a console log to trace the values being compared
-            // Uncomment the line below for extra debugging
-            // console.log(`Comparing currentTime (${currentTime}) with cue time range [${startTime}, ${endTime})`);
-
             if (currentTime >= startTime && currentTime < endTime) {
                 if (currentCueElement !== p) {
                     if (currentCueElement) {
@@ -149,10 +146,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Add a seeked event listener to force a re-evaluation on seeking
     audioPlayer.addEventListener('seeked', () => {
-        const event = new Event('timeupdate');
-        audioPlayer.dispatchEvent(event);
+        audioPlayer.dispatchEvent(new Event('timeupdate'));
     });
     
     repeatChapterBtn.addEventListener('click', () => {
@@ -165,11 +160,23 @@ document.addEventListener('DOMContentLoaded', () => {
             audioPlayer.currentTime = 0;
             audioPlayer.play();
         } else {
-            isPlaying = false;
-            playPauseBtn.textContent = 'Play';
-            if (currentCueElement) {
-                currentCueElement.classList.remove('highlight');
-                currentCueElement = null;
+            let currentChapterNum = parseInt(chapterSelect.value, 10);
+            if (currentChapterNum < 100) {
+                const nextChapterNum = currentChapterNum + 1;
+                const newChapterPadded = String(nextChapterNum).padStart(3, '0');
+                
+                chapterSelect.value = newChapterPadded;
+                chapterSelect.dispatchEvent(new Event('change'));
+
+                isPlaying = true;
+                playPauseBtn.textContent = 'Pause';
+            } else {
+                isPlaying = false;
+                playPauseBtn.textContent = 'Play';
+                if (currentCueElement) {
+                    currentCueElement.classList.remove('highlight');
+                    currentCueElement = null;
+                }
             }
         }
     });
@@ -179,42 +186,39 @@ document.addEventListener('DOMContentLoaded', () => {
         repeatSubsectionBtn.classList.toggle('active', isRepeatingSubsection);
     });
     
-    // Helper function to convert time string to seconds
-function parseTime(timeStr) {
-    if (!timeStr) return 0;
-    
-    // Split the time string by both ':' and '.'
-    // This will handle formats like 'HH:MM:SS.mmm'
-    const parts = timeStr.split(/[:.]/);
-    let hours = 0, minutes = 0, seconds = 0, milliseconds = 0;
+    // --- Helper function to convert time string to seconds ---
+    function parseTime(timeStr) {
+        if (!timeStr) return 0;
+        
+        const parts = timeStr.split(/[:.]/);
+        let hours = 0, minutes = 0, seconds = 0, milliseconds = 0;
 
-    if (parts.length === 4) { // HH:MM:SS.mmm
-        hours = parseInt(parts[0], 10) || 0;
-        minutes = parseInt(parts[1], 10) || 0;
-        seconds = parseInt(parts[2], 10) || 0;
-        milliseconds = parseInt(parts[3], 10) || 0;
-    } else if (parts.length === 3) { // MM:SS.mmm or HH:MM:SS
-        const hasMillis = timeStr.includes('.');
-        if (hasMillis) { // MM:SS.mmm
-            minutes = parseInt(parts[0], 10) || 0;
-            seconds = parseInt(parts[1], 10) || 0;
-            milliseconds = parseInt(parts[2], 10) || 0;
-        } else { // HH:MM:SS
+        if (parts.length === 4) { // HH:MM:SS.mmm
             hours = parseInt(parts[0], 10) || 0;
             minutes = parseInt(parts[1], 10) || 0;
             seconds = parseInt(parts[2], 10) || 0;
+            milliseconds = parseInt(parts[3], 10) || 0;
+        } else if (parts.length === 3) { // MM:SS.mmm or HH:MM:SS
+            const hasMillis = timeStr.includes('.');
+            if (hasMillis) { // MM:SS.mmm
+                minutes = parseInt(parts[0], 10) || 0;
+                seconds = parseInt(parts[1], 10) || 0;
+                milliseconds = parseInt(parts[2], 10) || 0;
+            } else { // HH:MM:SS
+                hours = parseInt(parts[0], 10) || 0;
+                minutes = parseInt(parts[1], 10) || 0;
+                seconds = parseInt(parts[2], 10) || 0;
+            }
+        } else if (parts.length === 2) { // MM:SS
+            minutes = parseInt(parts[0], 10) || 0;
+            seconds = parseInt(parts[1], 10) || 0;
+        } else if (parts.length === 1) { // SS or SSS
+            seconds = parseFloat(parts[0]) || 0;
         }
-    } else if (parts.length === 2) { // MM:SS
-        minutes = parseInt(parts[0], 10) || 0;
-        seconds = parseInt(parts[1], 10) || 0;
-    } else if (parts.length === 1) { // SS or SSS
-        seconds = parseFloat(parts[0]) || 0;
+
+        return hours * 3600 + minutes * 60 + seconds + (milliseconds / 1000);
     }
-
-    return hours * 3600 + minutes * 60 + seconds + (milliseconds / 1000);
-}
-
-
+    
     // Initial load
     loadChapterContent(chapterSelect.value);
 });
