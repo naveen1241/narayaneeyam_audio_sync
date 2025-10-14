@@ -90,7 +90,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Main synchronization logic
     audioPlayer.addEventListener('timeupdate', () => {
         const currentTime = audioPlayer.currentTime;
-
+    
+        // Check if currentChapterText is a valid iterable object
+    if (!currentChapterText) {
+        return; // Exit if the text content hasn't loaded yet
+    }
         // Highlight current subsection
         let foundCue = false;
         for (const p of currentChapterText) {
