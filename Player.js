@@ -28,8 +28,13 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadChapterContent(chapterNumber) {
         const chapterPadded = String(chapterNumber).padStart(3, '0');
         const audioPath = `Audio_Sync_S_Verses_Only/Narayaneeyam_D${chapterPadded}.mp3`;
-        audioPlayer.src = audioPath;
-        audioPlayer.load();
+audioPlayer.src = audioPath;
+audioPlayer.load();
+
+// Add this block to ensure the audio is ready
+audioPlayer.addEventListener('canplaythrough', () => {
+    console.log('[Audio] canplaythrough event fired. Audio is ready.');
+}, { once: true });
 
         try {
             const textResponse = await fetch('narayaneeyam_text.html');
