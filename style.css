@@ -16,7 +16,7 @@ body {
     width: 90%;
     max-width: 800px;
     background: #333;
-    border-radius: 25px; /* Creates rounded corners */
+    border-radius: 25px;
     padding: 20px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
     display: flex;
@@ -31,7 +31,7 @@ body {
 }
 
 h1 {
-    color: #2e8b57; /* Dark green font for the main title */
+    color: #2e8b57;
 }
 
 /* Custom Controls styling */
@@ -54,7 +54,7 @@ h1 {
     background: #444;
     color: #fff;
     border: none;
-    border-radius: 20px; /* Oval shape for buttons */
+    border-radius: 20px;
     padding: 10px 20px;
     font-size: 1em;
     cursor: pointer;
@@ -87,7 +87,7 @@ h1 {
 
 /* Volume slider styling */
 #volume-slider {
-    -webkit-appearance: none; /* Hide default slider */
+    -webkit-appearance: none;
     width: 120px;
     height: 8px;
     background: #555;
@@ -96,12 +96,12 @@ h1 {
 }
 
 #volume-slider::-webkit-slider-thumb {
-    -webkit-appearance: none; /* Hide default thumb */
+    -webkit-appearance: none;
     appearance: none;
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: #2e8b57; /* Dark green thumb */
+    background: #2e8b57;
     cursor: pointer;
 }
 
@@ -113,21 +113,22 @@ h1 {
     border-radius: 15px;
     padding: 20px;
     text-align: center;
-    color: #2e8b57; /* Dark green font for VTT */
+    color: #2e8b57;
     font-size: 1.2em;
     line-height: 1.6;
 }
 
-/* Styling for the synchronized text */
+/* ========================================================= */
+/* --- MODIFIED STYLES --- */
+/* Hide all subsection paragraphs by default */
 #text-container p {
-    margin: 10px 0;
-    transition: all 0.3s ease;
+    display: none;
 }
 
-/* Highlight effect for the active text cue */
+/* Display the paragraph that has the 'highlight' class, and remove the background highlight */
 #text-container p.highlight {
-    background-color: #2e8b57; /* Dark green background for highlighting */
-    color: #fff;
-    border-radius: 5px;
-    padding: 2px 5px;
+    display: block;
+    background-color: transparent; 
+    color: #fff; /* Use the default text color, not the green one from #text-container */
 }
+/* ========================================================= */
