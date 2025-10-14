@@ -113,7 +113,6 @@ audioPlayer.addEventListener('canplaythrough', () => {
 // ...
 audioPlayer.addEventListener('timeupdate', () => {
     const currentTime = audioPlayer.currentTime;
-    // Log the event firing for debugging purposes
     console.log('[Timeupdate] Current Time:', currentTime); 
 
     if (!currentChapterText || currentChapterText.length === 0) {
@@ -125,7 +124,11 @@ audioPlayer.addEventListener('timeupdate', () => {
         const startTime = parseTime(p.dataset.start);
         const endTime = parseTime(p.dataset.end);
         
+        // Add this log to see the parsed times for each cue
+        console.log(`[Debug] Checking cue. Start: ${p.dataset.start} (parsed: ${startTime}), End: ${p.dataset.end} (parsed: ${endTime})`);
+        
         if (currentTime >= startTime && currentTime < endTime) {
+            console.log(`[Match] Cue matched! Current Time: ${currentTime}, Start: ${startTime}, End: ${endTime}`);
             if (currentCueElement !== p) {
                 if (currentCueElement) {
                     currentCueElement.classList.remove('highlight');
@@ -151,7 +154,6 @@ audioPlayer.addEventListener('timeupdate', () => {
         }
     }
 });
-// ...
 
     
     repeatChapterBtn.addEventListener('click', () => {
