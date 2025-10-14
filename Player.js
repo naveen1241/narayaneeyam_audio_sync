@@ -28,13 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadChapterContent(chapterNumber) {
         const chapterPadded = String(chapterNumber).padStart(3, '0');
         const audioPath = `Audio_Sync_S_Verses_Only/Narayaneeyam_D${chapterPadded}.mp3`;
-audioPlayer.src = audioPath;
-audioPlayer.load();
-
-// Add this block to ensure the audio is ready
-audioPlayer.addEventListener('canplaythrough', () => {
-    console.log('[Audio] canplaythrough event fired. Audio is ready.');
-}, { once: true });
+        audioPlayer.src = audioPath;
+        audioPlayer.load();
 
         try {
             const textResponse = await fetch('narayaneeyam_text.html');
@@ -109,52 +104,55 @@ audioPlayer.addEventListener('canplaythrough', () => {
     });
 
     // Main synchronization logic
- // Inside Player.js
-// ...
-audioPlayer.addEventListener('timeupdate', () => {
-    const currentTime = audioPlayer.currentTime;
-    console.log('[Timeupdate] Current Time:', currentTime); 
+    audioPlayer.addEventListener('timeupdate', () => {
+        const currentTime = audioPlayer.currentTime;
+        
+        if (!currentChapterText || currentChapterText.length === 0) {
+            return;
+        }
+        
+        let foundCue = false;
+        // Iterate through the cues and highlight the matching one
+        for (const p of currentChapterText) {
+            const startTime = parseTime(p.dataset.start);
+            const endTime = parseTime(p.dataset.end);
+            
+            // Add a console log to trace the values being compared
+            // Uncomment the line below for extra debugging
+            // console.log(`Comparing currentTime (${currentTime}) with cue time range [${startTime}, ${endTime})`);
 
-    if (!currentChapterText || currentChapterText.length === 0) {
-        return;
-    }
-    
-    let foundCue = false;
-    for (const p of currentChapterText) {
-        const startTime = parseTime(p.dataset.start);
-        const endTime = parseTime(p.dataset.end);
-        
-        // Add this log to see the parsed times for each cue
-        console.log(`[Debug] Checking cue. Start: ${p.dataset.start} (parsed: ${startTime}), End: ${p.dataset.end} (parsed: ${endTime})`);
-        
-        if (currentTime >= startTime && currentTime < endTime) {
-            console.log(`[Match] Cue matched! Current Time: ${currentTime}, Start: ${startTime}, End: ${endTime}`);
-            if (currentCueElement !== p) {
-                if (currentCueElement) {
-                    currentCueElement.classList.remove('highlight');
+            if (currentTime >= startTime && currentTime < endTime) {
+                if (currentCueElement !== p) {
+                    if (currentCueElement) {
+                        currentCueElement.classList.remove('highlight');
+                    }
+                    p.classList.add('highlight');
+                    currentCueElement = p;
+                    currentSubsectionCue = p;
                 }
-                p.classList.add('highlight');
-                currentCueElement = p;
-                currentSubsectionCue = p;
+                foundCue = true;
+                break;
             }
-            foundCue = true;
-            break;
         }
-    }
-    
-    if (!foundCue && currentCueElement) {
-         currentCueElement.classList.remove('highlight');
-         currentCueElement = null;
-    }
-    
-    if (isRepeatingSubsection && currentSubsectionCue) {
-        const endTime = parseTime(currentSubsectionCue.dataset.end);
-        if (currentTime >= endTime) {
-            audioPlayer.currentTime = parseTime(currentSubsectionCue.dataset.start);
+        
+        if (!foundCue && currentCueElement) {
+             currentCueElement.classList.remove('highlight');
+             currentCueElement = null;
         }
-    }
-});
+        
+        if (isRepeatingSubsection && currentSubsectionCue) {
+            const endTime = parseTime(currentSubsectionCue.dataset.end);
+            if (currentTime >= endTime) {
+                audioPlayer.currentTime = parseTime(currentSubsectionCue.dataset.start);
+            }
+        }
+    });
 
+    // Add a seeked event listener to force a re-evaluation on seeking
+    audioPlayer.addEventListener('seeked', () => {
+        const event = new Event('timeupdate');
+        audioPlayer.dispatchEvent(event);
+    });
     
     repeatChapterBtn.addEventListener('click', () => {
         isRepeatingChapter = !isRepeatingChapter;
