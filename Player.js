@@ -106,7 +106,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Main synchronization logic
     audioPlayer.addEventListener('timeupdate', () => {
         const currentTime = audioPlayer.currentTime;
-        
+          // This line will prove the event is firing
+    console.log("Time updated! Current time: ", audioPlayer.currentTime);
         if (!currentChapterText || currentChapterText.length === 0) {
             return;
         }
