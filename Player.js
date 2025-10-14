@@ -109,49 +109,50 @@ audioPlayer.addEventListener('canplaythrough', () => {
     });
 
     // Main synchronization logic
-    audioPlayer.addEventListener('timeupdate', () => {
-        const currentTime = audioPlayer.currentTime;
+ // Inside Player.js
+// ...
+audioPlayer.addEventListener('timeupdate', () => {
+    const currentTime = audioPlayer.currentTime;
+    // Log the event firing for debugging purposes
+    console.log('[Timeupdate] Current Time:', currentTime); 
 
-        if (!currentChapterText || currentChapterText.length === 0) {
-            return;
-        }
+    if (!currentChapterText || currentChapterText.length === 0) {
+        return;
+    }
+    
+    let foundCue = false;
+    for (const p of currentChapterText) {
+        const startTime = parseTime(p.dataset.start);
+        const endTime = parseTime(p.dataset.end);
         
-        let foundCue = false;
-        // Iterate through the cues and highlight the matching one
-        for (const p of currentChapterText) {
-            const startTime = parseTime(p.dataset.start);
-            const endTime = parseTime(p.dataset.end);
-            
-            if (currentTime >= startTime && currentTime < endTime) {
-                if (currentCueElement !== p) {
-                    // Remove highlight from previous cue if it's different
-                    if (currentCueElement) {
-                        currentCueElement.classList.remove('highlight');
-                    }
-                    // Add highlight to the new cue
-                    p.classList.add('highlight');
-                    currentCueElement = p;
-                    currentSubsectionCue = p;
+        if (currentTime >= startTime && currentTime < endTime) {
+            if (currentCueElement !== p) {
+                if (currentCueElement) {
+                    currentCueElement.classList.remove('highlight');
                 }
-                foundCue = true;
-                break; // Exit the loop once a match is found
+                p.classList.add('highlight');
+                currentCueElement = p;
+                currentSubsectionCue = p;
             }
+            foundCue = true;
+            break;
         }
-        
-        // Handle case where no cue is currently active
-        if (!foundCue && currentCueElement) {
-             currentCueElement.classList.remove('highlight');
-             currentCueElement = null;
+    }
+    
+    if (!foundCue && currentCueElement) {
+         currentCueElement.classList.remove('highlight');
+         currentCueElement = null;
+    }
+    
+    if (isRepeatingSubsection && currentSubsectionCue) {
+        const endTime = parseTime(currentSubsectionCue.dataset.end);
+        if (currentTime >= endTime) {
+            audioPlayer.currentTime = parseTime(currentSubsectionCue.dataset.start);
         }
-        
-        // Handle repeat subsection
-        if (isRepeatingSubsection && currentSubsectionCue) {
-            const endTime = parseTime(currentSubsectionCue.dataset.end);
-            if (currentTime >= endTime) {
-                audioPlayer.currentTime = parseTime(currentSubsectionCue.dataset.start);
-            }
-        }
-    });
+    }
+});
+// ...
+
     
     repeatChapterBtn.addEventListener('click', () => {
         isRepeatingChapter = !isRepeatingChapter;
