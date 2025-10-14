@@ -179,25 +179,40 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Helper function to convert time string to seconds
-    function parseTime(timeStr) {
-        if (!timeStr) return 0;
-        
-        const parts = timeStr.split(':');
-        let hours = 0, minutes = 0, seconds = 0;
+function parseTime(timeStr) {
+    if (!timeStr) return 0;
+    
+    // Split the time string by both ':' and '.'
+    // This will handle formats like 'HH:MM:SS.mmm'
+    const parts = timeStr.split(/[:.]/);
+    let hours = 0, minutes = 0, seconds = 0, milliseconds = 0;
 
-        if (parts.length === 3) {
-            hours = parseInt(parts, 10) || 0;
-            minutes = parseInt(parts, 10) || 0;
-            seconds = parseFloat(parts) || 0;
-        } else if (parts.length === 2) {
-            minutes = parseInt(parts, 10) || 0;
-            seconds = parseFloat(parts) || 0;
-        } else if (parts.length === 1) {
-            seconds = parseFloat(parts) || 0;
+    if (parts.length === 4) { // HH:MM:SS.mmm
+        hours = parseInt(parts[0], 10) || 0;
+        minutes = parseInt(parts[1], 10) || 0;
+        seconds = parseInt(parts[2], 10) || 0;
+        milliseconds = parseInt(parts[3], 10) || 0;
+    } else if (parts.length === 3) { // MM:SS.mmm or HH:MM:SS
+        const hasMillis = timeStr.includes('.');
+        if (hasMillis) { // MM:SS.mmm
+            minutes = parseInt(parts[0], 10) || 0;
+            seconds = parseInt(parts[1], 10) || 0;
+            milliseconds = parseInt(parts[2], 10) || 0;
+        } else { // HH:MM:SS
+            hours = parseInt(parts[0], 10) || 0;
+            minutes = parseInt(parts[1], 10) || 0;
+            seconds = parseInt(parts[2], 10) || 0;
         }
-
-        return hours * 3600 + minutes * 60 + seconds;
+    } else if (parts.length === 2) { // MM:SS
+        minutes = parseInt(parts[0], 10) || 0;
+        seconds = parseInt(parts[1], 10) || 0;
+    } else if (parts.length === 1) { // SS or SSS
+        seconds = parseFloat(parts[0]) || 0;
     }
+
+    return hours * 3600 + minutes * 60 + seconds + (milliseconds / 1000);
+}
+
 
     // Initial load
     loadChapterContent(chapterSelect.value);
