@@ -25,43 +25,74 @@ document.addEventListener('DOMContentLoaded', () => {
         chapterSelect.appendChild(option);
     }
 
-    // --- Part 2: Dynamic text and audio loading ---
-    async function loadChapterContent(chapterNumber) {
-        // Load the audio file
-        audioPlayer.src = `Audio_Sync_S_Verses_Only/Narayaneeyam_D${chapterNumber}.mp3`;
-        audioPlayer.load();
+// --- Part 2: Dynamic text and audio loading ---
+async function loadChapterContent(chapterNumber) {
+    console.log(`[Load] Starting to load content for chapter ${chapterNumber}...`);
 
-        // Load the HTML text and extract the specific chapter
+    // Set audio source
+    const chapterPadded = String(chapterNumber).padStart(3, '0');
+    const audioPath = `Audio_Sync_S_Verses_Only/Narayaneeyam_D${chapterPadded}.mp3`;
+    audioPlayer.src = audioPath;
+    audioPlayer.load();
+    console.log(`[Load] Audio path set to: ${audioPath}`);
+
+    try {
+        // Fetch the HTML text file
+        console.log('[Fetch] Attempting to fetch narayaneeyam_text.html...');
         const textResponse = await fetch('narayaneeyam_text.html');
+        if (!textResponse.ok) {
+            throw new Error(`HTTP error! status: ${textResponse.status}`);
+        }
         const textHtml = await textResponse.text();
+        console.log(`[Fetch] Fetched text content. Size: ${textHtml.length} bytes.`);
+        
+        // Use a temporary element to safely parse the fetched HTML string
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = textHtml;
 
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(textHtml, 'text/html');
+        // Extract the relevant chapter text using the data-chapter attribute
+        const chapterTitleToSearch = `Narayaneeyam D${chapterPadded}`;
+        console.log(`[Parse] Searching for chapter with data-chapter="${chapterTitleToSearch}"...`);
+        
+        let foundChapter = false;
+        let chapterContent = [];
 
-        // Extract the relevant chapter text
-        const chapterTitle = `Narayaneeyam_D${chapterNumber}.vtt`;
-        let startFound = false;
-        const chapterContent = [];
-
-        for (const child of doc.body.children) {
-            if (child.tagName === 'H2' && child.textContent.includes(chapterTitle)) {
-                startFound = true;
-            } else if (child.tagName === 'H2' && startFound) {
-                break; // Stop when the next chapter starts
-            }
-
-            if (startFound) {
-                chapterContent.push(child.outerHTML);
+        // Find the correct chapter's <h2> tag
+        const h2Elements = tempDiv.querySelectorAll('h2[data-chapter]');
+        for (const h2 of h2Elements) {
+            if (h2.dataset.chapter.trim() === chapterTitleToSearch.trim()) {
+                foundChapter = true;
+                chapterContent.push(h2.outerHTML);
+                
+                // Collect all subsequent siblings until the next h2
+                let nextSibling = h2.nextElementSibling;
+                while (nextSibling && nextSibling.tagName !== 'H2') {
+                    chapterContent.push(nextSibling.outerHTML);
+                    nextSibling = nextSibling.nextElementSibling;
+                }
+                break; // Stop after finding and processing the correct chapter
             }
         }
         
+        if (chapterContent.length === 0) {
+            console.warn(`[Parse] No content found for chapter ${chapterNumber}. Check chapter title matching.`);
+        }
+
         textContainer.innerHTML = chapterContent.join('');
         currentChapterText = textContainer.querySelectorAll('p[data-start]');
         
-        if (isPlaying) {
-            audioPlayer.play();
-        }
+        console.log(`[Parse] Found ${currentChapterText.length} text cues for chapter ${chapterNumber}.`);
+
+    } catch (error) {
+        console.error('[Error] An error occurred during loading chapter content:', error);
+        textContainer.innerHTML = `<p style="color:red;">Error loading text: ${error.message}</p>`;
+        currentChapterText = []; // Ensure it's always an iterable
     }
+    
+    if (isPlaying) {
+        audioPlayer.play();
+    }
+}
 
     // --- Part 3: Event Listeners and Logic ---
     chapterSelect.addEventListener('change', (e) => {
