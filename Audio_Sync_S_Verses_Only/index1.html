@@ -1,13 +1,158 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="refresh" content="0; url=narayaneeyam_player.html">
-    <link rel="canonical" href="narayaneeyam_player.html">
-    <title>Narayaneeyam Player</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Audio-Text Sync Player</title>
+    <style>
+        body {
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+        .player-container {
+            width: 100%;
+            max-width: 800px;
+            margin: auto;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        .controls-row {
+            display: flex;
+            justify-content: center;
+            padding: 15px;
+            background: #f9f9f9;
+        }
+        #play-button {
+            padding: 12px 24px;
+            font-size: 1.2em;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #play-button:hover {
+            background-color: #0056b3;
+        }
+        .audio-controls {
+            width: 100%;
+            display: block;
+            background: #fff;
+            border-top: 1px solid #eee;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+        .text-display {
+            min-height: 150px;
+            padding: 20px;
+            font-size: 1.5em;
+            text-align: center;
+            line-height: 1.6;
+            background: #fff;
+            color: #555;
+            transition: background-color 0.4s ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .text-display.highlight {
+            background-color: #e6f7ff;
+            color: #004085;
+            font-weight: bold;
+        }
+        .text-display.loading {
+            color: #999;
+            font-style: italic;
+        }
+        .text-display.error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-    <h1>Redirecting to the Narayaneeyam Player...</h1>
-    <p><a href="narayaneeyam_player.html">Click here if you are not redirected automatically.</a></p>
+
+<div class="player-container" aria-live="polite">
+    <div class="controls-row">
+        <button id="play-button">Play</button>
+    </div>
+    <audio id="audio-player" class="audio-controls" controls aria-label="Audio player">
+        <track id="audio-track" kind="captions" srclang="en" label="Captions" default>
+    </audio>
+    <div id="text-display" class="text-display loading">Fetching content...</div>
+</div>
+
+<script>
+    const audioPlayer = document.getElementById('audio-player');
+    const audioTrack = document.getElementById('audio-track');
+    const textDisplay = document.getElementById('text-display');
+    const playButton = document.getElementById('play-button');
+
+    // --- Configuration: Paths are relative to the index.html file ---
+    const config = {
+        jsonUrl: './recitations_master_weighted_timed.json',
+        audioFolder: './', // MP3 files are in the same folder as index.html
+        vttFolder: './Audio_Sync_S_Verses_Only/vtt_split_meaning/' // vtt_output is a subfolder
+    };
+
+    function updateTextDisplay(text, isHighlight = false, isError = false) {
+        textDisplay.textContent = text;
+        textDisplay.classList.toggle('highlight', isHighlight);
+        textDisplay.classList.toggle('loading', false);
+        textDisplay.classList.toggle('error', isError);
+    }
+
+    async function loadData() {
+        try {
+            updateTextDisplay("Fetching track list...");
+            const response = await fetch(config.jsonUrl);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const recitations = await response.json();
+            if (recitations && recitations.length > 0) {
+                const firstRecitationData = recitations[0];
+                const audioFilename = firstRecitationData.audio;
+                const vttFilename = audioFilename.replace('.mp3', '.vtt');
+                
+                audioPlayer.src = `${config.audioFolder}${audioFilename}`;
+                audioTrack.src = `${config.vttFolder}${vttFilename}`;
+                
+                audioPlayer.load();
+                updateTextDisplay(`Press 'Play' to listen to: ${audioFilename}`);
+                playButton.style.display = 'block';
+            } else {
+                throw new Error("No recitation data found.");
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            updateTextDisplay(`Error loading data: ${error.message}`, false, true);
+        }
+    }
+
+    audioTrack.addEventListener('cuechange', () => {
+        const activeCues = audioTrack.track.activeCues;
+        if (activeCues && activeCues.length > 0) {
+            updateTextDisplay(activeCues[0].text, true); 
+        } else {
+            updateTextDisplay("");
+        }
+    });
+
+    playButton.addEventListener('click', () => {
+        audioPlayer.play();
+    });
+    
+    document.addEventListener('DOMContentLoaded', loadData);
+</script>
+
 </body>
 </html>
