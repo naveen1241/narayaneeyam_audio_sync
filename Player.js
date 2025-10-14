@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentCueElement = null;
 
     // --- Part 1: Initial setup ---
-    // Populate the chapter select dropdown
     for (let i = 1; i <= 100; i++) {
         const option = document.createElement('option');
         const chapterNumber = String(i).padStart(3, '0');
@@ -27,36 +26,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Part 2: Dynamic text and audio loading ---
     async function loadChapterContent(chapterNumber) {
-        // Load the audio file
-        audioPlayer.src = `Audio_Sync_S_Verses_Only/Narayaneeyam_D${chapterNumber}.mp3`;
+        const chapterPadded = String(chapterNumber).padStart(3, '0');
+        const audioPath = `Audio_Sync_S_Verses_Only/Narayaneeyam_D${chapterPadded}.mp3`;
+        audioPlayer.src = audioPath;
         audioPlayer.load();
 
-        // Load the HTML text and extract the specific chapter
-        const textResponse = await fetch('narayaneeyam_text.html');
-        const textHtml = await textResponse.text();
+        try {
+            const textResponse = await fetch('narayaneeyam_text.html');
+            if (!textResponse.ok) {
+                throw new Error(`HTTP error! status: ${textResponse.status}`);
+            }
+            const textHtml = await textResponse.text();
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = textHtml;
 
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(textHtml, 'text/html');
+            const chapterTitleToSearch = `Narayaneeyam D${chapterPadded}`;
+            
+            let foundChapter = false;
+            let chapterContent = [];
 
-        // Extract the relevant chapter text
-        const chapterTitle = `Narayaneeyam_D${chapterNumber}.vtt`;
-        let startFound = false;
-        const chapterContent = [];
-
-        for (const child of doc.body.children) {
-            if (child.tagName === 'H2' && child.textContent.includes(chapterTitle)) {
-                startFound = true;
-            } else if (child.tagName === 'H2' && startFound) {
-                break; // Stop when the next chapter starts
+            const h2Elements = tempDiv.querySelectorAll('h2[data-chapter]');
+            for (const h2 of h2Elements) {
+                if (h2.dataset.chapter.trim() === chapterTitleToSearch.trim()) {
+                    foundChapter = true;
+                    chapterContent.push(h2.outerHTML);
+                    
+                    let nextSibling = h2.nextElementSibling;
+                    while (nextSibling && nextSibling.tagName !== 'H2') {
+                        chapterContent.push(nextSibling.outerHTML);
+                        nextSibling = nextSibling.nextElementSibling;
+                    }
+                    break;
+                }
+            }
+            
+            if (chapterContent.length === 0) {
+                console.warn(`[Parse] No content found for chapter ${chapterNumber}. Check chapter title matching.`);
             }
 
-            if (startFound) {
-                chapterContent.push(child.outerHTML);
-            }
+            textContainer.innerHTML = chapterContent.join('');
+            currentChapterText = textContainer.querySelectorAll('p[data-start]');
+            
+        } catch (error) {
+            console.error('[Error] An error occurred during loading chapter content:', error);
+            textContainer.innerHTML = `<p style="color:red;">Error loading text: ${error.message}</p>`;
+            currentChapterText = [];
         }
-        
-        textContainer.innerHTML = chapterContent.join('');
-        currentChapterText = textContainer.querySelectorAll('p[data-start]');
         
         if (isPlaying) {
             audioPlayer.play();
@@ -91,22 +107,36 @@ document.addEventListener('DOMContentLoaded', () => {
     audioPlayer.addEventListener('timeupdate', () => {
         const currentTime = audioPlayer.currentTime;
 
-        // Highlight current subsection
+        if (!currentChapterText || currentChapterText.length === 0) {
+            return;
+        }
+        
         let foundCue = false;
+        // Iterate through the cues and highlight the matching one
         for (const p of currentChapterText) {
             const startTime = parseTime(p.dataset.start);
             const endTime = parseTime(p.dataset.end);
             
             if (currentTime >= startTime && currentTime < endTime) {
-                if (currentCueElement) {
-                    currentCueElement.classList.remove('highlight');
+                if (currentCueElement !== p) {
+                    // Remove highlight from previous cue if it's different
+                    if (currentCueElement) {
+                        currentCueElement.classList.remove('highlight');
+                    }
+                    // Add highlight to the new cue
+                    p.classList.add('highlight');
+                    currentCueElement = p;
+                    currentSubsectionCue = p;
                 }
-                p.classList.add('highlight');
-                currentCueElement = p;
-                currentSubsectionCue = p;
                 foundCue = true;
-                break;
+                break; // Exit the loop once a match is found
             }
+        }
+        
+        // Handle case where no cue is currently active
+        if (!foundCue && currentCueElement) {
+             currentCueElement.classList.remove('highlight');
+             currentCueElement = null;
         }
         
         // Handle repeat subsection
@@ -118,7 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Repeat chapter
     repeatChapterBtn.addEventListener('click', () => {
         isRepeatingChapter = !isRepeatingChapter;
         repeatChapterBtn.classList.toggle('active', isRepeatingChapter);
@@ -131,10 +160,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             isPlaying = false;
             playPauseBtn.textContent = 'Play';
+            if (currentCueElement) {
+                currentCueElement.classList.remove('highlight');
+                currentCueElement = null;
+            }
         }
     });
 
-    // Repeat subsection
     repeatSubsectionBtn.addEventListener('click', () => {
         isRepeatingSubsection = !isRepeatingSubsection;
         repeatSubsectionBtn.classList.toggle('active', isRepeatingSubsection);
@@ -142,10 +174,22 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Helper function to convert time string to seconds
     function parseTime(timeStr) {
+        if (!timeStr) return 0;
+        
         const parts = timeStr.split(':');
-        const hours = parseInt(parts[0]);
-        const minutes = parseInt(parts[1]);
-        const seconds = parseFloat(parts[2]);
+        let hours = 0, minutes = 0, seconds = 0;
+
+        if (parts.length === 3) {
+            hours = parseInt(parts, 10) || 0;
+            minutes = parseInt(parts, 10) || 0;
+            seconds = parseFloat(parts) || 0;
+        } else if (parts.length === 2) {
+            minutes = parseInt(parts, 10) || 0;
+            seconds = parseFloat(parts) || 0;
+        } else if (parts.length === 1) {
+            seconds = parseFloat(parts) || 0;
+        }
+
         return hours * 3600 + minutes * 60 + seconds;
     }
 
