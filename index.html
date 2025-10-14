@@ -16,7 +16,7 @@
         }
         .player-container {
             width: 100%;
-            max-width: 800px; /* Adjusted window size */
+            max-width: 800px;
             margin: auto;
             border: 1px solid #ddd;
             border-radius: 12px;
@@ -29,9 +29,9 @@
             padding: 15px;
             background: #f9f9f9;
         }
-        #play-all-button {
-            padding: 12px 24px; /* Adjusted button size */
-            font-size: 1.2em; /* Adjusted button font size */
+        #play-button {
+            padding: 12px 24px;
+            font-size: 1.2em;
             background-color: #007bff;
             color: white;
             border: none;
@@ -39,7 +39,7 @@
             cursor: pointer;
             transition: background-color 0.3s ease;
         }
-        #play-all-button:hover {
+        #play-button:hover {
             background-color: #0056b3;
         }
         .audio-controls {
@@ -53,7 +53,7 @@
         .text-display {
             min-height: 150px;
             padding: 20px;
-            font-size: 1.5em; /* Adjusted text display font size */
+            font-size: 1.5em;
             text-align: center;
             line-height: 1.6;
             background: #fff;
@@ -62,7 +62,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            white-space: pre-wrap; /* Ensures line breaks are respected */
         }
         .text-display.highlight {
             background-color: #e6f7ff;
@@ -83,7 +82,7 @@
 
 <div class="player-container" aria-live="polite">
     <div class="controls-row">
-        <button id="play-all-button">Play All</button>
+        <button id="play-button">Play</button>
     </div>
     <audio id="audio-player" class="audio-controls" controls aria-label="Audio player">
         <track id="audio-track" kind="captions" srclang="en" label="Captions" default>
@@ -95,17 +94,14 @@
     const audioPlayer = document.getElementById('audio-player');
     const audioTrack = document.getElementById('audio-track');
     const textDisplay = document.getElementById('text-display');
-    const playAllButton = document.getElementById('play-all-button');
+    const playButton = document.getElementById('play-button');
 
-const config = {
-    jsonUrl: './Audio_Sync_S_Verses_Only/recitations_master_weighted_timed.json',
-    audioFolder: './Audio_Sync_S_Verses_Only/',
-    vttFolder: './Audio_Sync_S_Verses_Only/vtt_all/'
-        };
-
-    let recitations = [];
-    let currentTrackIndex = 0;
-    let trackCues = null;
+    // --- Configuration: Paths are relative to the index.html file ---
+    const config = {
+        jsonUrl: './recitations_master_weighted_timed.json',
+        audioFolder: './', // MP3 files are in the same folder as index.html
+        vttFolder: './Audio_Sync_S_Verses_Only/vtt_split_meaning/' // vtt_output is a subfolder
+    };
 
     function updateTextDisplay(text, isHighlight = false, isError = false) {
         textDisplay.textContent = text;
@@ -114,76 +110,25 @@ const config = {
         textDisplay.classList.toggle('error', isError);
     }
 
-    function updateSurroundingText() {
-        if (!trackCues) {
-            updateTextDisplay("");
-            return;
-        }
-
-        const activeCues = audioTrack.track.activeCues;
-        if (!activeCues || activeCues.length === 0) {
-            updateTextDisplay("");
-            return;
-        }
-
-        const activeCue = activeCues[0];
-        let activeCueIndex = -1;
-        for (let i = 0; i < trackCues.length; i++) {
-            if (trackCues[i] === activeCue) {
-                activeCueIndex = i;
-                break;
-            }
-        }
-
-        if (activeCueIndex === -1) {
-            updateTextDisplay(activeCue.text, true);
-            return;
-        }
-
-        let combinedText = '';
-        if (activeCueIndex > 0) {
-            combinedText += trackCues[activeCueIndex - 1].text + "\n\n";
-        }
-        combinedText += activeCue.text;
-        if (activeCueIndex < trackCues.length - 1) {
-            combinedText += "\n\n" + trackCues[activeCueIndex + 1].text;
-        }
-
-        updateTextDisplay(combinedText, true);
-    }
-
-    function loadAudioAndTrack(index) {
-        if (index < 0 || index >= recitations.length) {
-            updateTextDisplay("Playlist finished.");
-            currentTrackIndex = 0;
-            return;
-        }
-
-        currentTrackIndex = index;
-        const currentRecitationData = recitations[currentTrackIndex];
-        const audioFilename = currentRecitationData.audio;
-        const vttFilename = audioFilename.replace('.mp3', '.vtt');
-
-        audioPlayer.src = `${config.audioFolder}${audioFilename}`;
-        audioTrack.src = `${config.vttFolder}${vttFilename}`;
-
-        trackCues = null;
-        audioTrack.track.mode = 'hidden';
-        audioPlayer.load();
-        updateTextDisplay(`Loading: ${audioFilename}`);
-    }
-
     async function loadData() {
         try {
             updateTextDisplay("Fetching track list...");
             const response = await fetch(config.jsonUrl);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            recitations = await response.json();
-
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const recitations = await response.json();
             if (recitations && recitations.length > 0) {
-                loadAudioAndTrack(0);
-                playAllButton.style.display = 'block';
-                updateTextDisplay("Press 'Play All' to begin.");
+                const firstRecitationData = recitations[0];
+                const audioFilename = firstRecitationData.audio;
+                const vttFilename = audioFilename.replace('.mp3', '.vtt');
+                
+                audioPlayer.src = `${config.audioFolder}${audioFilename}`;
+                audioTrack.src = `${config.vttFolder}${vttFilename}`;
+                
+                audioPlayer.load();
+                updateTextDisplay(`Press 'Play' to listen to: ${audioFilename}`);
+                playButton.style.display = 'block';
             } else {
                 throw new Error("No recitation data found.");
             }
@@ -192,29 +137,18 @@ const config = {
             updateTextDisplay(`Error loading data: ${error.message}`, false, true);
         }
     }
-    
-    // Use the load event to get the cues and then listen for cue changes
-    audioTrack.addEventListener('load', () => {
-        trackCues = audioTrack.track.cues;
-        audioTrack.track.mode = 'showing';
-        audioTrack.addEventListener('cuechange', updateSurroundingText);
-    });
 
-    playAllButton.addEventListener('click', () => {
-        if (recitations && recitations.length > 0) {
-            if (audioPlayer.ended) loadAudioAndTrack(0);
-            audioPlayer.play();
-        }
-    });
-
-    audioPlayer.addEventListener('ended', () => {
-        const nextTrackIndex = currentTrackIndex + 1;
-        if (nextTrackIndex < recitations.length) {
-            loadAudioAndTrack(nextTrackIndex);
-            audioPlayer.play();
+    audioTrack.addEventListener('cuechange', () => {
+        const activeCues = audioTrack.track.activeCues;
+        if (activeCues && activeCues.length > 0) {
+            updateTextDisplay(activeCues[0].text, true); 
         } else {
-            updateTextDisplay("Playlist finished.");
+            updateTextDisplay("");
         }
+    });
+
+    playButton.addEventListener('click', () => {
+        audioPlayer.play();
     });
     
     document.addEventListener('DOMContentLoaded', loadData);
