@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Narayaneeyam Player</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="player-container">
+        <div class="header">
+            <h1>Narayaneeyam Player</h1>
+            <label for="chapter-select">Select Chapter:</label>
+            <select id="chapter-select"></select>
+        </div>
+        
+        <audio id="audio-player" controls></audio>
+        
+        <div class="custom-controls">
+            <div class="playback-controls">
+                <button id="play-pause">Play</button>
+                <button id="repeat-chapter">Repeat Chapter</button>
+                <button id="repeat-subsection">Repeat Subsection</button>
+            </div>
+            
+            <div class="speed-control">
+                <label for="speed-select">Speed:</label>
+                <select id="speed-select">
+                    <option value="0.5">0.5x</option>
+                    <option value="0.75">0.75x</option>
+                    <option value="1" selected>1x</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                </select>
+            </div>
+
+            <div class="volume-control">
+                <label for="volume-slider">Volume:</label>
+                <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1">
+            </div>
+        </div>
+
+        <div id="text-container">
+            <!-- Text will be dynamically loaded here by Player.js -->
+        </div>
+
+    </div>
+
+    <script src="Player.js"></script>
+
+</body>
+</html>
